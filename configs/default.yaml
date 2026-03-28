@@ -1,0 +1,71 @@
+# Cross-Model Activation Oracle — Default Config
+
+# Models
+model_a:
+  name: "google/gemma-2-2b"
+  alias: "gemma2"
+  # d_model will be read from model config automatically
+
+model_b:
+  name: "Qwen/Qwen2.5-1.5B"
+  alias: "qwen2.5"
+
+# Activation extraction
+extraction:
+  dataset: "NeelNanda/pile-10k"
+  n_prompts: 10000
+  max_seq_len: 128
+  batch_size: 32
+  token_position: "last"  # "last" | "mean" | int (specific position)
+  # Layer fractions to extract at (relative depth)
+  layer_fractions: [0.0, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875, 1.0]
+  dtype: "float32"  # Store activations in this dtype
+
+# CKA analysis
+cka:
+  kernel: "linear"  # "linear" | "rbf"
+  # For RBF kernel
+  rbf_sigma: null  # null = use median heuristic
+  # Debiased CKA (Kornblith et al. 2019)
+  debiased: true
+  # Subsample for speed (null = use all)
+  subsample_n: 5000
+
+# Alignment
+alignment:
+  method: "procrustes"  # "procrustes" | "linear" | "both"
+  # Procrustes: only works if d_model matches
+  # Linear: learned projection, works for any d_model pair
+  train_fraction: 0.8  # Train/test split for alignment
+  procrustes:
+    orthogonal: true  # Constrain to orthogonal rotation
+  linear:
+    regularization: 1.0e-4
+    epochs: 100
+    lr: 1.0e-3
+
+# Oracle transfer
+oracle:
+  # HuggingFace adapter ID for the activation oracle
+  adapter_id: null  # Set this to the oracle LoRA adapter path
+  base_model: "model_b"  # Which model's oracle to use
+  test_prompts:
+    - "The capital of France is"
+    - "Water freezes at"
+    - "The theory of relativity was developed by"
+
+# Output
+output:
+  dir: "outputs"
+  save_activations: true
+  save_alignments: true
+  save_plots: true
+  wandb:
+    enabled: false
+    project: "cross-model-activation-oracles"
+    entity: null
+
+# Compute
+compute:
+  device: "cuda"  # "cuda" | "cpu" | "auto"
+  seed: 42
