@@ -124,15 +124,25 @@ Required: `HF_TOKEN` (for gated models like Gemma). Optional: `WANDB_API_KEY` fo
 | [Representation Engineering](https://arxiv.org/abs/2310.01405) — Zou et al., 2023 | Top-down approach to reading/controlling model internals at the representation level. Complementary to oracle approach. |
 | [How to Use and Interpret Activation Patching](https://arxiv.org/abs/2404.15255) — Heimersheim et al., 2024 | Best practices for activation replacement experiments. Critical for our injection-based oracle transfer test design. |
 
+### Closest Prior Work — The Novelty Gap (READ THIS FIRST)
+
+These papers do almost exactly what we're proposing, but for different tools. Our contribution is specifically about **oracle** transfer — none of these test LLM-based generative oracles.
+
+| Paper | What They Transfer | Gap vs. Our Work |
+|-------|-------------------|-----------------|
+| [Activation Space Interventions Can Be Transferred Between LLMs](https://arxiv.org/abs/2503.04429) — ICML 2025 | **Steering vectors** across Llama/Qwen/Gemma via learned activation alignment | Same alignment machinery, but steering ≠ oracle. Steering is a causal intervention; oracles are generative readers. |
+| [Transferring Linear Features Across Language Models](https://arxiv.org/abs/2506.06609) — NeurIPS 2025 | **SAEs, probes, steering vectors** across Pythia/GPT2/Gemma via affine stitching maps | Closest threat. Transfers probes (classifiers), but probes are simple linear classifiers — oracles are LLMs with richer generative capabilities. |
+| [Theseus: Transporting Task Vectors across Architectures](https://arxiv.org/abs/2602.12952) — Feb 2026 | **Task vectors** (weight-space) via orthogonal Procrustes | Exact same Procrustes technique, but in weight space not activation space. Doesn't test activation-based tools. |
+| [Universal Sparse Autoencoders](https://arxiv.org/abs/2502.03714) — ICML 2025 | **SAE dictionaries** that decode activations from multiple architectures to shared concept space | Cross-model activation interpretation, but via SAE dictionary learning, not oracle LLMs. |
+| [Cross-model Transferability among LLMs](https://arxiv.org/abs/2501.02009) — ACL 2025 | **Concept steering** via linear transforms between LLM representation spaces | Linear alignment + cross-model, but steering only. No oracle readability test. |
+
 ### Related — Cross-Architecture Transfer
 
 | Paper | Why It Matters |
 |-------|---------------|
 | [Relative Representations Enable Zero-Shot Latent Space Communication](https://arxiv.org/abs/2209.15430) — Moschella et al., 2023 (ICLR) | Shows angle-based relative representations are invariant across different latent spaces. Could provide an alternative alignment method to Procrustes. |
 | [Revisiting Model Stitching](https://arxiv.org/abs/2106.07682) — Bansal et al., 2021 (NeurIPS) | Connects frozen layers from different networks with trainable mapping. Reveals similarities CKA misses. Practical stitching technique for cross-model transfer. |
-| [Transferring Linear Features Across Language Models](https://arxiv.org/abs/2506.06609) — 2024-2025 | Extends stitching to LLMs: affine mappings transfer SAE features across Pythia, GPT2, Gemma families. Directly demonstrates cross-architecture feature transfer works. |
-| Cross-model Transferability among LLMs — ACL 2025 | Showed contrastive modulation transfers across architectures. Evidence that cross-model transfer is feasible. |
-| GER-steer — March 2026 | Cross-architecture steering evaluation on Qwen, Llama, Gemma. Latest evidence on cross-model representation alignment. |
+| [GER-steer: Global Evolutionary Steering](https://arxiv.org/abs/2603.12298) — March 2026 | Cross-architecture steering evaluation on Qwen, Llama, Gemma. Latest evidence on cross-model representation alignment. |
 
 ### Supporting — Probes & Safety Applications
 
