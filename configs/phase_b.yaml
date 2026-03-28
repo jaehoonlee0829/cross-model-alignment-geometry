@@ -1,15 +1,18 @@
-# Cross-Model Activation Oracle — Default Config
+# Cross-Model Activation Oracle — Phase B Config
+# Mismatched dimension experiment: Gemma-2-2B vs Qwen2.5-1.5B
+# Gemma d_model=2304, Qwen d_model=1536 (mismatch)
+# Allows testing low-rank, ridge, and LASSO alignment methods
 
-# Models (Phase A)
+# Models (Phase B: Mismatched Dimensions)
 model_a:
-  name: "meta-llama/Llama-3.2-1B"
-  alias: "llama"
-  d_model: 2048
+  name: "google/gemma-2-2b"
+  alias: "gemma"
+  d_model: 2304
 
 model_b:
-  name: "EleutherAI/pythia-1.4b"
-  alias: "pythia"
-  d_model: 2048
+  name: "Qwen/Qwen2.5-1.5B"
+  alias: "qwen"
+  d_model: 1536
 
 # Activation extraction
 extraction:
@@ -32,35 +35,20 @@ cka:
   # Subsample for speed (null = use all)
   subsample_n: 5000
 
-# Alignment
+# Alignment (Phase B: Multiple methods for mismatched dimensions)
 alignment:
-  method: "orthogonal_procrustes"  # "orthogonal_procrustes" | "linear" | "both"
-  # Orthogonal Procrustes: only works if d_model matches
-  # Linear: learned projection, works for any d_model pair
+  method: "all"  # Try all methods: low_rank, linear (ridge), lasso
   train_fraction: 0.8  # Train/test split for alignment
-  procrustes:
-    orthogonal: true  # Constrain to orthogonal rotation
+  # Low-rank (LoRA-style) configuration
+  low_rank:
+    ranks: [32, 64, 128, 256]  # Test multiple rank values
+    regularization: 1.0e-4
+  # Ridge (linear) configuration
   linear:
     regularization: 1.0e-4
-    epochs: 100
-    lr: 1.0e-3
-
-# Phase B: Mismatched dimensions
-phase_b:
-  model_a:
-    name: "google/gemma-2-2b"
-    alias: "gemma"
-    d_model: 2304
-  model_b:
-    name: "Qwen/Qwen2.5-1.5B"
-    alias: "qwen"
-    d_model: 1536
-  alignment:
-    methods:
-      - low_rank  # LoRA-style W=AB
-      - ridge     # Full ridge regression
-      - lasso     # L1 sparse (diagnostic)
-    low_rank_ranks: [32, 64, 128, 256]
+  # LASSO (sparse) configuration
+  lasso:
+    regularization: 1.0e-3  # Higher lambda for more sparsity
 
 # Oracle transfer
 oracle:
@@ -74,7 +62,7 @@ oracle:
 
 # Output
 output:
-  dir: "outputs"
+  dir: "outputs/phase_b"
   save_activations: true
   save_alignments: true
   save_plots: true
