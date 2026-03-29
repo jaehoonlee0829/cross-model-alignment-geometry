@@ -74,8 +74,8 @@ def hsic(K: np.ndarray, L: np.ndarray, debiased: bool = True) -> float:
         np.fill_diagonal(K_tilde, 0)
         np.fill_diagonal(L_tilde, 0)
 
-        # Compute terms
-        term1 = np.trace(K_tilde @ L_tilde)
+        # Compute terms (using sum(A*B) instead of trace(A@B) for O(n^2) not O(n^3))
+        term1 = np.sum(K_tilde * L_tilde)
         term2 = (K_tilde.sum() * L_tilde.sum()) / ((n - 1) * (n - 2))
         term3 = 2 * (K_tilde.sum(axis=0) @ L_tilde.sum(axis=0)) / (n - 2)
 
@@ -137,9 +137,9 @@ def permutation_test_cka(
 ) -> dict:
     """Aristotelian-style permutation calibration for CKA.
 
-    Shuffles sample indices of Y to break correspondence with X,
+    Shuffles sample indices of X to break correspondence with Y,
     computes CKA on each permutation to build null distribution,
-    then reports calibrated CKA (effect size).
+    then reports z-score against the null.
 
     This controls for the dimensionality inflation confound identified
     by Chun et al. (2026) "Revisiting the Platonic Representation
