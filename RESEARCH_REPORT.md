@@ -23,9 +23,9 @@ The Platonic Representation Hypothesis (Huh et al., 2024) offers a potential sol
 
 ### 2.1 Models and Data
 
-We conducted four experimental phases, each comparing a different model pair. Models were selected to span distinct architecture families, training corpora, and parameter scales.
+We conducted four experimental evaluations, each comparing a different model pair. Models were selected to span distinct architecture families, training corpora, and parameter scales.
 
-| Phase | Model A | Model B | d_model A | d_model B | Layers A | Layers B | Dims Match |
+| Eval | Model A | Model B | d_model A | d_model B | Layers A | Layers B | Dims Match |
 |-------|---------|---------|-----------|-----------|----------|----------|------------|
 | A | Llama-3.2-1B (Meta) | Pythia-1.4B (EleutherAI) | 2048 | 2048 | 16 | 24 | Yes |
 | B | Gemma-2-2B (Google) | Qwen2.5-1.5B (Alibaba) | 2304 | 1536 | 26 | 28 | No |
@@ -34,7 +34,7 @@ We conducted four experimental phases, each comparing a different model pair. Mo
 
 **Dataset.** All experiments used the NeelNanda/pile-10k dataset (a 10,000-prompt subset of The Pile). We extracted residual stream activations at the last (non-padding) token position from each prompt, using a maximum sequence length of 128 tokens and batch size of 32 (16 for 3B-scale models). Activations were stored in float32.
 
-**Layer sampling.** We extracted activations at 9 relative layer depths per model: fractions 0.0, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875, and 1.0 of total depth, yielding 9 x 9 = 81 CKA comparisons per phase.
+**Layer sampling.** We extracted activations at 9 relative layer depths per model: fractions 0.0, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875, and 1.0 of total depth, yielding 9 x 9 = 81 CKA comparisons per eval.
 
 **Compute.** All experiments were run on a single NVIDIA A40 (48 GB) GPU via RunPod, with random seed 42.
 
@@ -46,15 +46,15 @@ We conducted four experimental phases, each comparing a different model pair. Mo
 
 where K = XX^T and L = YY^T are linear kernel matrices, and HSIC is the Hilbert-Schmidt Independence Criterion. CKA scores range from 0 (no similarity) to 1 (identical up to linear transformation).
 
-We used the **debiased HSIC estimator** (Song et al., 2012), which provides more reliable estimates for finite samples by zeroing out kernel matrix diagonals and applying bias-correction terms. For each phase, we subsampled 5,000 of the 10,000 prompts for computational efficiency.
+We used the **debiased HSIC estimator** (Song et al., 2012), which provides more reliable estimates for finite samples by zeroing out kernel matrix diagonals and applying bias-correction terms. For each eval, we subsampled 5,000 of the 10,000 prompts for computational efficiency.
 
-**Permutation tests.** To assess statistical significance, we ran 200 permutations of the sample indices for each of the top 2--3 layer pairs per phase, computing CKA on 1,000 samples per permutation. The p-value is the fraction of permuted CKA values exceeding the observed CKA. Effect size is reported as Cohen's d: (observed - null_mean) / null_std.
+**Permutation tests.** To assess statistical significance, we ran 200 permutations of the sample indices for each of the top 2--3 layer pairs per eval, computing CKA on 1,000 samples per permutation. The p-value is the fraction of permuted CKA values exceeding the observed CKA. Effect size is reported as Cohen's d: (observed - null_mean) / null_std.
 
 ### 2.3 Alignment Methods
 
 We tested four alignment approaches for learning a mapping W such that X @ W approximates Y, where X and Y are activation matrices from the source and target models respectively.
 
-**Orthogonal Procrustes** (Phase A only). When d_model matches, we solve for the orthogonal matrix W = argmin ||XW - Y||_F subject to W^T W = I. The closed-form solution is W = UV^T where USV^T = SVD(X^T Y) (Schonemann, 1966). Data is centered before fitting. This method preserves geometric structure (distances and angles).
+**Orthogonal Procrustes** (Eval A only). When d_model matches, we solve for the orthogonal matrix W = argmin ||XW - Y||_F subject to W^T W = I. The closed-form solution is W = UV^T where USV^T = SVD(X^T Y) (Schonemann, 1966). Data is centered before fitting. This method preserves geometric structure (distances and angles).
 
 **Ridge regression (linear projection).** For any d_model pair, we solve W = argmin ||XW - Y||_F^2 + lambda ||W||_F^2, with closed-form solution W = (X^T X + lambda I)^{-1} X^T Y. Regularization lambda = 1e-4.
 
@@ -71,22 +71,22 @@ We tested four alignment approaches for learning a mapping W such that X @ W app
 
 ### 3.1 CKA Similarity
 
-CKA similarity was weak across all four model pairs. The following table summarizes the CKA statistics per phase.
+CKA similarity was weak across all four model pairs. The following table summarizes the CKA statistics per eval.
 
-| Phase | Model Pair | Max CKA | Best Layer Pair (A -> B) | Mean CKA | Min CKA |
+| Eval | Model Pair | Max CKA | Best Layer Pair (A -> B) | Mean CKA | Min CKA |
 |-------|-----------|---------|--------------------------|----------|---------|
 | A | Llama-1B vs Pythia-1.4B | 0.208 | L13 -> L23 | 0.053 | 0.010 |
 | B | Gemma-2B vs Qwen-1.5B | 0.222 | L18 -> L23 | 0.112 | 0.036 |
 | D | Llama-3B vs Pythia-2.8B | 0.181 | L16 -> L31 | 0.052 | 0.006 |
 | E | Llama-3B vs Gemma-2B | 0.184 | L16 -> L18 | 0.101 | 0.029 |
 
-**CKA does not increase with scale.** Comparing Phase A (1B scale, max CKA = 0.208) to Phase D (3B scale, max CKA = 0.181), representational similarity is equivalent or slightly *lower* at 3B, directly contradicting the prediction of the Platonic Representation Hypothesis that similarity should grow with model capacity.
+**CKA does not increase with scale.** Comparing Eval A (1B scale, max CKA = 0.208) to Eval D (3B scale, max CKA = 0.181), representational similarity is equivalent or slightly *lower* at 3B, directly contradicting the prediction of the Platonic Representation Hypothesis that similarity should grow with model capacity.
 
-**Late layers match best.** Across all phases, the highest CKA scores involved late layers of both models. For example, in Phase A the best pair was Llama layer 13 (81% depth) paired with Pythia layer 23 (final layer). This is consistent with the expectation that later layers encode more abstract, task-relevant features.
+**Late layers match best.** Across all evals, the highest CKA scores involved late layers of both models. For example, in Eval A the best pair was Llama layer 13 (81% depth) paired with Pythia layer 23 (final layer). This is consistent with the expectation that later layers encode more abstract, task-relevant features.
 
-**Top CKA layer pairs per phase (selected):**
+**Top CKA layer pairs per eval (selected):**
 
-| Phase | Layer A | Layer B | CKA |
+| Eval | Layer A | Layer B | CKA |
 |-------|---------|---------|-----|
 | A | 13 | 23 | 0.208 |
 | A | 11 | 23 | 0.198 |
@@ -105,7 +105,7 @@ CKA similarity was weak across all four model pairs. The following table summari
 
 Alignment quality was uniformly poor across all methods and phases. Test losses near 1.0 indicate that the learned mappings are barely better than predicting the target mean.
 
-**Phase A: Orthogonal Procrustes (matched dims, d=2048)**
+**Eval A: Orthogonal Procrustes (matched dims, d=2048)**
 
 | Source Layer (Llama) | Target Layer (Pythia) | Train Loss | Test Loss | Explained Var |
 |---------------------|-----------------------|------------|-----------|---------------|
@@ -117,7 +117,7 @@ Alignment quality was uniformly poor across all methods and phases. Test losses 
 
 The best result (Llama L15 -> Pythia L23) explains only 6.9% of target variance. Even with perfectly matched dimensions and an orthogonality-preserving mapping, the alignment captures very little of the target representation.
 
-**Phase B: Method comparison (Gemma-2B -> Qwen-1.5B, best layer pair L18 -> L23)**
+**Eval B: Method comparison (Gemma-2B -> Qwen-1.5B, best layer pair L18 -> L23)**
 
 | Method | Rank | Train Loss | Test Loss | Explained Var |
 |--------|------|------------|-----------|---------------|
@@ -130,7 +130,7 @@ The best result (Llama L15 -> Pythia L23) explains only 6.9% of target variance.
 
 **Key finding: Low-rank (rank=32) beats full ridge regression.** The full-rank methods (ridge and LASSO) show substantially lower train loss (0.749 vs 0.902) but much higher test loss (1.062 vs 0.965), indicating severe overfitting. Low-rank rank=32 achieves the best test loss across all methods. Increasing rank monotonically degrades test performance, with rank=256 overfitting to the point of negative explained variance on test data. This pattern was consistent across all tested layer pairs.
 
-**Phase D: Llama-3B -> Pythia-2.8B (best layer pair L27 -> L31)**
+**Eval D: Llama-3B -> Pythia-2.8B (best layer pair L27 -> L31)**
 
 | Method | Rank | Train Loss | Test Loss | Explained Var |
 |--------|------|------------|-----------|---------------|
@@ -143,7 +143,7 @@ The best result (Llama L15 -> Pythia L23) explains only 6.9% of target variance.
 
 At 3B scale, even the best method (low-rank rank=32) fails to achieve positive explained variance on the test set. The alignment is even weaker than at 1B scale.
 
-**Phase E: Llama-3B -> Gemma-2B (L16 -> L18)**
+**Eval E: Llama-3B -> Gemma-2B (L16 -> L18)**
 
 | Method | Rank | Train Loss | Test Loss | Explained Var |
 |--------|------|------------|-----------|---------------|
@@ -156,7 +156,7 @@ Cross-family alignment (Meta vs Google) shows similar patterns: massive overfitt
 
 All tested layer pairs showed CKA scores far exceeding the null distribution, confirming that the weak representational similarity is statistically genuine.
 
-| Phase | Layer Pair (A -> B) | Observed CKA | Null Mean | Null Std | p-value | Cohen's d | n_perm |
+| Eval | Layer Pair (A -> B) | Observed CKA | Null Mean | Null Std | p-value | Cohen's d | n_perm |
 |-------|--------------------:|-------------:|----------:|---------:|--------:|----------:|-------:|
 | A | L13 -> L23 | 0.190 | -0.00005 | 0.00141 | 0.000 | 134.8 | 200 |
 | A | L11 -> L23 | 0.180 | -0.00003 | 0.00141 | 0.000 | 127.8 | 200 |
@@ -169,7 +169,7 @@ All tested layer pairs showed CKA scores far exceeding the null distribution, co
 | E | L16 -> L18 | 0.173 | -0.00012 | 0.00151 | 0.000 | 114.6 | 200 |
 | E | L23 -> L18 | 0.170 | -0.00018 | 0.00154 | 0.000 | 110.9 | 200 |
 
-Across all 10 tested layer pairs from 4 phases, no single permutation out of 200 produced a CKA value exceeding the observed CKA (p = 0.000 in all cases). The null distribution means hover near zero (as expected for shuffled data), with standard deviations around 0.0014. Effect sizes (Cohen's d) range from 100.6 to 149.8, all classified as extremely large. The 95th percentile of the null distribution was approximately 0.002 in all tests, roughly two orders of magnitude below observed values.
+Across all 10 tested layer pairs from 4 evals, no single permutation out of 200 produced a CKA value exceeding the observed CKA (p = 0.000 in all cases). The null distribution means hover near zero (as expected for shuffled data), with standard deviations around 0.0014. Effect sizes (Cohen's d) range from 100.6 to 149.8, all classified as extremely large. The 95th percentile of the null distribution was approximately 0.002 in all tests, roughly two orders of magnitude below observed values.
 
 **Interpretation.** The signal is real --- these models do share some representational structure that is not present in random permutations. However, statistical significance does not imply practical significance. CKA values of 0.15--0.22 indicate very weak similarity in absolute terms.
 
@@ -180,15 +180,15 @@ Across all 10 tested layer pairs from 4 phases, no single permutation out of 200
 Our results provide evidence against the Platonic Representation Hypothesis at the 1--3B parameter scale. The key findings are:
 
 1. **CKA similarity is consistently weak** (0.10--0.22 maximum) across all four model pairs, spanning three distinct architecture families trained on different data.
-2. **Scaling does not help.** The 3B model pairs (Phases D and E) show equivalent or lower CKA than the 1B pairs (Phase A), contrary to the hypothesis that convergence should increase with scale.
-3. **Alignment mappings capture very little variance.** The best alignment (Procrustes, Phase A) explains only 6.9% of target variance. At 3B scale, no method achieves positive explained variance on the test set.
+2. **Scaling does not help.** The 3B model pairs (Evals D and E) show equivalent or lower CKA than the 1B pairs (Eval A), contrary to the hypothesis that convergence should increase with scale.
+3. **Alignment mappings capture very little variance.** The best alignment (Procrustes, Eval A) explains only 6.9% of target variance. At 3B scale, no method achieves positive explained variance on the test set.
 
 ### 4.2 Cross-Model Structure Is Real but Low-Dimensional
 
 Despite the overall weakness, the cross-model signal is not noise. Two pieces of evidence support this:
 
 1. **Permutation tests.** All observed CKA values are hundreds of standard deviations above the null distribution (Cohen's d > 100). The signal is extremely robust statistically.
-2. **Low-rank outperforms full-rank.** In Phase B, low-rank alignment at rank 32 achieves test loss of 0.965, while full ridge regression achieves 1.062. This implies the cross-model relationship is confined to approximately 32 shared dimensions out of 1536--2304 total. Higher ranks introduce overfitting, not useful structure.
+2. **Low-rank outperforms full-rank.** In Eval B, low-rank alignment at rank 32 achieves test loss of 0.965, while full ridge regression achieves 1.062. This implies the cross-model relationship is confined to approximately 32 shared dimensions out of 1536--2304 total. Higher ranks introduce overfitting, not useful structure.
 
 This suggests that while models do not converge to the same overall representation, they may share a small number of common features --- perhaps corresponding to basic linguistic structures (syntax, common entity types) that any language model must encode.
 
@@ -219,11 +219,11 @@ Several limitations constrain the interpretation of these results:
 
 3. All CKA scores are highly statistically significant (p = 0.000, Cohen's d = 100--150 across 10 tested layer pairs), confirming the cross-model signal is real despite being weak.
 
-4. Low-rank alignment at rank 32 outperforms full-rank ridge regression on held-out data (test loss 0.965 vs 1.062 in Phase B), demonstrating that cross-model structure is confined to a low-dimensional subspace of approximately 32 dimensions.
+4. Low-rank alignment at rank 32 outperforms full-rank ridge regression on held-out data (test loss 0.965 vs 1.062 in Eval B), demonstrating that cross-model structure is confined to a low-dimensional subspace of approximately 32 dimensions.
 
 5. Higher-rank alignment (128, 256) and full-rank methods (ridge, LASSO) consistently overfit: lower train loss but higher test loss than rank 32, confirming the low-dimensional nature of the shared structure.
 
-6. The best alignment mapping (Orthogonal Procrustes, Phase A, Llama L15 -> Pythia L23) explains only 6.9% of target variance, far too low for practical cross-model oracle transfer.
+6. The best alignment mapping (Orthogonal Procrustes, Eval A, Llama L15 -> Pythia L23) explains only 6.9% of target variance, far too low for practical cross-model oracle transfer.
 
 7. Late layers consistently produce the highest CKA scores across all model pairs, consistent with deeper layers encoding more abstract, potentially universal features.
 

@@ -19,10 +19,10 @@ def load_csv(path):
 # PLOT 1: CKA Heatmaps — All 4 phases in 2x2 grid
 fig, axes = plt.subplots(2, 2, figsize=(16, 14))
 phase_info = [
-    ('a', 'Phase A: Llama-1B vs Pythia-1.4B\n(d=2048, matched)'),
-    ('b', 'Phase B: Gemma-2B vs Qwen-1.5B\n(d=2304 vs 1536)'),
-    ('d', 'Phase D: Llama-3B vs Pythia-2.8B\n(d=3072 vs 2560)'),
-    ('e', 'Phase E: Llama-3B vs Gemma-2B\n(d=3072 vs 2304)'),
+    ('a', 'Eval A: Llama-1B vs Pythia-1.4B\n(d=2048, matched)'),
+    ('b', 'Eval B: Gemma-2B vs Qwen-1.5B\n(d=2304 vs 1536)'),
+    ('d', 'Eval D: Llama-3B vs Pythia-2.8B\n(d=3072 vs 2560)'),
+    ('e', 'Eval E: Llama-3B vs Gemma-2B\n(d=3072 vs 2304)'),
 ]
 
 for idx, (phase, title) in enumerate(phase_info):
@@ -43,7 +43,7 @@ for idx, (phase, title) in enumerate(phase_info):
         ax.text(0.5, 0.5, f'Failed: {e}', ha='center', va='center', transform=ax.transAxes)
         ax.set_title(title)
 
-plt.suptitle('Cross-Model CKA Similarity — All Experiments', fontsize=14, fontweight='bold')
+plt.suptitle('Cross-Model CKA Similarity — All Evals', fontsize=14, fontweight='bold')
 plt.tight_layout()
 plt.savefig('outputs/plots/all_cka_heatmaps.png', dpi=150, bbox_inches='tight')
 plt.close()
@@ -51,8 +51,8 @@ print('Saved: all_cka_heatmaps.png')
 
 # PLOT 2: CKA Scale Comparison — max CKA by phase
 fig, ax = plt.subplots(figsize=(10, 6))
-phases = ['Phase A\nLlama-1B vs Pythia-1.4B\n(1B scale)', 'Phase B\nGemma-2B vs Qwen-1.5B\n(2B scale)',
-          'Phase D\nLlama-3B vs Pythia-2.8B\n(3B scale)', 'Phase E\nLlama-3B vs Gemma-2B\n(cross-family)']
+phases = ['Eval A\nLlama-1B vs Pythia-1.4B\n(1B scale)', 'Eval B\nGemma-2B vs Qwen-1.5B\n(2B scale)',
+          'Eval D\nLlama-3B vs Pythia-2.8B\n(3B scale)', 'Eval E\nLlama-3B vs Gemma-2B\n(cross-family)']
 max_ckas = []
 mean_ckas = []
 for phase in ['a', 'b', 'd', 'e']:
@@ -75,12 +75,15 @@ ax.set_ylim(0, 0.35)
 for bar in bars1:
     ax.text(bar.get_x() + bar.get_width()/2., bar.get_height() + 0.005,
             f'{bar.get_height():.3f}', ha='center', va='bottom', fontsize=8)
+for bar in bars2:
+    ax.text(bar.get_x() + bar.get_width()/2., bar.get_height() + 0.005,
+            f'{bar.get_height():.3f}', ha='center', va='bottom', fontsize=8)
 plt.tight_layout()
 plt.savefig('outputs/plots/cka_scale_comparison.png', dpi=150, bbox_inches='tight')
 plt.close()
 print('Saved: cka_scale_comparison.png')
 
-# PLOT 3: Phase B Low-Rank Analysis — key finding
+# PLOT 3: Eval B Low-Rank Analysis — key finding
 try:
     align_b = load_csv('outputs/intermediary/alignment_results_phase_b.csv')
     # Extract best layer pair (18->23) results
@@ -109,7 +112,7 @@ try:
     ax1.set_yticks(range(len(methods)))
     ax1.set_yticklabels(methods, fontsize=9)
     ax1.set_xlabel('Test Loss (lower = better)')
-    ax1.set_title('Phase B: Gemma L18 -> Qwen L23\nAlignment Method Comparison')
+    ax1.set_title('Eval B: Gemma L18 -> Qwen L23\nAlignment Method Comparison')
     ax1.axvline(x=1.0, color='red', linestyle='--', alpha=0.5, label='Baseline (no alignment)')
     ax1.legend()
 
@@ -138,7 +141,7 @@ try:
         ax2.axhline(y=1.0, color='gray', linestyle=':', alpha=0.5, label='No alignment')
         ax2.set_xlabel('Low-Rank Dimension')
         ax2.set_ylabel('Test Loss (mean +/- std across layer pairs)')
-        ax2.set_title('Phase B: Low-Rank Alignment\nLower rank = BETTER (less overfitting)')
+        ax2.set_title('Eval B: Low-Rank Alignment\nLower rank = BETTER (less overfitting)')
         ax2.legend()
         ax2.set_xscale('log', base=2)
 
@@ -149,13 +152,13 @@ try:
 except Exception as e:
     print(f'Plot 3 failed: {e}')
 
-# PLOT 4: Alignment Comparison Across Phases
+# PLOT 4: Alignment Comparison Across Evals
 fig, axes = plt.subplots(2, 2, figsize=(16, 12))
 for idx, (phase, title) in enumerate([
-    ('a', 'Phase A: Llama-1B vs Pythia-1.4B'),
-    ('b', 'Phase B: Gemma-2B vs Qwen-1.5B'),
-    ('d', 'Phase D: Llama-3B vs Pythia-2.8B'),
-    ('e', 'Phase E: Llama-3B vs Gemma-2B'),
+    ('a', 'Eval A: Llama-1B vs Pythia-1.4B'),
+    ('b', 'Eval B: Gemma-2B vs Qwen-1.5B'),
+    ('d', 'Eval D: Llama-3B vs Pythia-2.8B'),
+    ('e', 'Eval E: Llama-3B vs Gemma-2B'),
 ]):
     ax = axes[idx // 2][idx % 2]
     try:
@@ -198,7 +201,7 @@ for idx, (phase, title) in enumerate([
         ax.text(0.5, 0.5, f'Failed: {e}', ha='center', va='center', transform=ax.transAxes)
         ax.set_title(title)
 
-plt.suptitle('Alignment Quality Comparison — All Phases', fontsize=14, fontweight='bold')
+plt.suptitle('Alignment Quality Comparison — All Evals', fontsize=14, fontweight='bold')
 plt.tight_layout()
 plt.savefig('outputs/plots/alignment_comparison_all.png', dpi=150, bbox_inches='tight')
 plt.close()
@@ -211,7 +214,7 @@ for phase in ['a', 'b', 'd']:
     try:
         data = load_csv(f'outputs/intermediary/permutation_test_phase_{phase}.csv')
         for r in data:
-            r['phase_label'] = f"Phase {phase.upper()}"
+            r['phase_label'] = f"Eval {phase.upper()}"
             all_perm.append(r)
     except:
         pass
@@ -242,10 +245,10 @@ print('\n' + '='*80)
 print('EXPERIMENT SUMMARY')
 print('='*80)
 
-for phase, title in [('a', 'Phase A: Llama-1B vs Pythia-1.4B (d=2048)'),
-                      ('b', 'Phase B: Gemma-2B vs Qwen-1.5B (d=2304 vs 1536)'),
-                      ('d', 'Phase D: Llama-3B vs Pythia-2.8B (d=3072 vs 2560)'),
-                      ('e', 'Phase E: Llama-3B vs Gemma-2B (d=3072 vs 2304)')]:
+for phase, title in [('a', 'Eval A: Llama-1B vs Pythia-1.4B (d=2048)'),
+                      ('b', 'Eval B: Gemma-2B vs Qwen-1.5B (d=2304 vs 1536)'),
+                      ('d', 'Eval D: Llama-3B vs Pythia-2.8B (d=3072 vs 2560)'),
+                      ('e', 'Eval E: Llama-3B vs Gemma-2B (d=3072 vs 2304)')]:
     print(f'\n--- {title} ---')
     try:
         cka = np.load(f'outputs/phase_{phase}/cka/cka_results.npz', allow_pickle=True)['cka_matrix']
