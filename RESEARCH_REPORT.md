@@ -4,7 +4,7 @@
 
 We systematically characterize the geometry of shared representations across architecturally distinct language models at the 1--3B parameter scale. Using debiased Centered Kernel Alignment (CKA) with Aristotelian-style permutation calibration, we measure representational similarity between five model pairs spanning four architecture families (Llama, Pythia, Gemma, Qwen). We then learn alignment mappings via Orthogonal Procrustes, ridge regression, LASSO, and low-rank factorization at ranks 4--256, and perform a rank-vs-sample-size ablation to distinguish genuine low-dimensional structure from regularization artifacts.
 
-**Key findings:** (1) Cross-family CKA is consistently weak (max 0.10--0.22) but statistically significant (Cohen's d > 100). (2) Within-family CKA (Llama-1B vs Llama-3B) is dramatically higher (max 0.91, mean 0.60), validating our methodology. (3) Low-rank alignment at rank 4--8 outperforms full-rank ridge regression, and the optimal rank does *not* increase with sample size, providing strong evidence that cross-model shared structure is genuinely confined to approximately 4--8 dimensions. (4) CKA does not increase with model scale from 1B to 3B parameters.
+**Key findings:** (1) Cross-family CKA is consistently weak (max 0.10--0.22) but statistically significant (Cohen's d > 100, p < 0.005). (2) Within-family CKA (Llama-1B vs Llama-3B) is dramatically higher (max 0.91, mean 0.60), validating our methodology. (3) Low-rank alignment outperforms full-rank ridge regression due to the bias-variance tradeoff: full-rank methods have too many parameters and overfit. (4) CKA does not increase with model scale from 1B to 3B parameters. (5) Cross-architecture alignment carries coarse semantic signal for binary classification (topic 81%, toxicity 72%, sentiment 63%) despite failing completely on fine-grained next-token prediction.
 
 These results bear on the Platonic Representation Hypothesis (Huh et al., 2024), which we do not find supported at this scale for cross-family pairs, and align with the Aristotelian critique (Chun et al., 2026) that raw CKA without null calibration can overstate similarity. We compare our approach to two concurrent works on cross-model transfer (Activation Space Interventions Transfer, 2503.04429; Model Stitching for Linear Features, 2506.06609) and identify key methodological gaps that our rank analysis and CKA calibration address.
 
@@ -12,18 +12,18 @@ These results bear on the Platonic Representation Hypothesis (Huh et al., 2024),
 
 ### 1.1 Motivation
 
-A fundamental question in neural network interpretability is whether independently trained language models converge to similar internal representations. If they do, interpretability tools developed for one model --- such as activation oracles (Karvonen et al., 2025), sparse autoencoders, or linear probes --- could transfer across models via a learned mapping, dramatically reducing the per-model cost of interpretability.
+Recent work on cross-model transfer demonstrates that learned mappings between activation spaces can transfer interpretability tools --- steering vectors (2503.04429), SAE features (2506.06609), and probes --- across architectures. These papers show that *transfer works in practice*, but they use full-rank mappings and never ask what the minimum dimensionality of the shared signal is. They also skip measuring representational similarity before attempting transfer, making it difficult to distinguish genuine shared structure from overfitting artifacts.
 
-The **Platonic Representation Hypothesis** (Huh et al., 2024) formalizes this intuition: it posits that sufficiently large neural networks, regardless of architecture, converge toward shared statistical representations of reality that differ only by an orthogonal transformation. If true, this would make cross-model interpretability tools feasible at scale.
+The **Platonic Representation Hypothesis** (Huh et al., 2024) formalizes the intuition that sufficiently large neural networks converge toward shared representations regardless of architecture, differing only by an orthogonal transformation. However, the **Aristotelian critique** (Chun et al., 2026, "Revisiting the Platonic Representation Hypothesis: An Aristotelian View", arxiv.org/abs/2602.14486) raises a critical methodological concern: standard CKA can overstate representational similarity due to dimensionality inflation. Chun et al. advocate for permutation-calibrated CKA (comparing observed CKA against a null distribution from shuffled data) to control for this confound. We adopt this approach throughout, using the debiased HSIC estimator (Song et al., 2012) for both observed and null CKA computations.
 
-However, the **Aristotelian Representation Hypothesis** (Chun et al., 2026, "Revisiting the Platonic Representation Hypothesis: An Aristotelian View", arxiv.org/abs/2602.14486) raises a critical methodological concern: standard CKA can overstate representational similarity due to dimensionality inflation. Chun et al. advocate for permutation-calibrated CKA (comparing observed CKA against a null distribution from shuffled data) to control for this confound. We adopt this approach throughout.
+Our contribution is complementary to the transfer literature: rather than demonstrating that transfer works, we characterize the *geometry* of the shared signal --- its magnitude, statistical significance, and functional content across different task granularities.
 
 ### 1.2 Research Questions
 
 1. **Do architecturally distinct LLMs develop similar internal representations?** We measure representational similarity using debiased, permutation-calibrated CKA across all layer pairs of each model pair.
 2. **Can we learn high-quality alignment mappings between activation spaces?** We test orthogonal Procrustes, ridge regression, LASSO, and low-rank factorization methods.
 3. **Does representational similarity increase with model scale?** We compare results at 1B and 3B parameters.
-4. **What is the dimensionality of cross-model structure?** We use systematic rank sweeps (4--256) and a rank-vs-sample-size ablation to probe whether shared structure is confined to a low-dimensional subspace and whether this reflects genuine structure or regularization.
+4. **Does low-rank alignment outperform full-rank, and why?** We use systematic rank sweeps (4--256) and a rank-vs-sample-size ablation to disentangle genuine low-dimensional structure from bias-variance tradeoff effects.
 5. **Can our pipeline detect strong alignment when it should exist?** We include a within-family positive control (Llama-1B vs Llama-3B).
 
 ### 1.3 Relation to Prior Work
@@ -176,16 +176,22 @@ This is 4--9x higher than any cross-family pair, confirming that: (a) our pipeli
 
 All tested layer pairs showed CKA scores far exceeding the null distribution, confirming that even the weak cross-family similarity is statistically genuine.
 
-| Eval | Layer Pair | Observed CKA | Null Mean | Null Std | Cohen's d | p-value |
-|------|-----------|-------------|-----------|----------|-----------|---------|
-| A | L13 -> L23 | 0.190 | -0.00005 | 0.00141 | 134.8 | 0.000 |
-| A | L11 -> L23 | 0.180 | -0.00003 | 0.00141 | 127.8 | 0.000 |
-| B | L18 -> L23 | 0.216 | -0.00008 | 0.00144 | 149.8 | 0.000 |
-| B | L21 -> L23 | 0.196 | -0.00010 | 0.00144 | 136.4 | 0.000 |
-| D | L16 -> L31 | 0.159 | -0.00006 | 0.00148 | 107.4 | 0.000 |
-| E | L16 -> L18 | 0.173 | -0.00012 | 0.00151 | 114.6 | 0.000 |
+**Cohen's d** (effect size) measures how many standard deviations the observed CKA lies above the null distribution mean: d = (observed - null_mean) / null_std. Cohen's d > 0.8 is conventionally "large"; our values exceed 100, indicating the observed CKA is hundreds of standard deviations above chance.
 
-The null distribution means hover near zero (as expected for shuffled data), with standard deviations around 0.0014. Effect sizes (Cohen's d) range from 100--150, all classified as extremely large. This confirms the signal is real --- but statistical significance does not imply practical significance.
+| Eval | Layer Pair | Observed CKA | Null Mean | Null Std | Cohen's d | p |
+|------|-----------|-------------|-----------|----------|-----------|---|
+| A | L13 -> L23 | 0.190 | -0.00005 | 0.00141 | 134.8 | < 0.005 |
+| A | L11 -> L23 | 0.180 | -0.00003 | 0.00141 | 127.8 | < 0.005 |
+| B | L18 -> L23 | 0.216 | -0.00008 | 0.00144 | 149.8 | < 0.005 |
+| B | L21 -> L23 | 0.196 | -0.00010 | 0.00144 | 136.4 | < 0.005 |
+| C | L0 -> L0 | 0.915 | -0.00017 | 0.00133 | **687.0** | < 0.005 |
+| C | L15 -> L27 | 0.864 | -0.00003 | 0.00138 | **624.1** | < 0.005 |
+| D | L16 -> L31 | 0.159 | -0.00006 | 0.00148 | 107.4 | < 0.005 |
+| E | L16 -> L18 | 0.173 | -0.00012 | 0.00151 | 114.6 | < 0.005 |
+
+p-values are bounded by the number of permutations: with 200 permutations, the minimum reportable p-value is 1/200 = 0.005. No permuted CKA exceeded the observed value in any test. The null distribution means hover near zero (as expected for shuffled data), with standard deviations around 0.0014. Within-family effect sizes (Cohen's d = 624--687) are 5--6x higher than cross-family (107--150).
+
+This confirms the signal is real --- but statistical significance does not imply practical significance.
 
 ### 3.3 Alignment Quality
 
@@ -221,9 +227,9 @@ The best result (Llama L15 -> Pythia L23) explains only 6.9% of target variance.
 ![Alignment Comparison](outputs/plots/alignment_comparison_all.png)
 *Figure 4: Alignment quality across all evals. Low-rank methods consistently outperform full-rank ridge/LASSO on held-out data.*
 
-### 3.4 Rank-vs-Sample-Size Ablation (The Key Experiment)
+### 3.4 Rank-vs-Sample-Size Ablation
 
-This experiment determines whether the optimality of low rank reflects genuine low-dimensional structure or is merely a regularization artifact from limited samples.
+This experiment tests whether the optimality of low rank reflects genuine low-dimensional structure or the bias-variance tradeoff from fitting high-dimensional mappings with limited samples.
 
 **Results at n=8000 (largest sample size):**
 
@@ -251,9 +257,9 @@ This experiment determines whether the optimality of low rank reflects genuine l
 ![Rank Ablation](outputs/plots/rank_ablation_zoomed.png)
 *Figure 5: Rank-vs-sample-size ablation. Left: at n=5000 and n=8000, rank 4--8 is optimal. Right: at small sample sizes, even rank 4 overfits. The optimal rank does NOT increase with n, ruling out regularization artifacts.*
 
-**Interpretation:** The optimal rank stays at 4--8 regardless of sample size. At n=5000, rank 4 is best; at n=8000, rank 8 is best. Crucially, the optimal rank does *not* increase with n (e.g., 32 at n=1000, 64 at n=5000, etc.) --- ruling out the regularization-artifact hypothesis. **The cross-model signal is genuinely confined to approximately 4--8 dimensions.**
+**Interpretation:** Low-rank methods consistently outperform full-rank methods on held-out data. This is a **bias-variance tradeoff**: with 5000--8000 training samples and d = 1536--3072, full-rank ridge regression has millions of free parameters (d_source x d_target) and overfits massively. Low-rank methods constrain the parameter count, reducing variance at the cost of slightly higher bias.
 
-This is a much stronger claim than our original finding that rank 32 beats ridge. The data shows the shared subspace has intrinsic dimensionality around 4--8, far lower than any of the models' hidden dimensions (1536--3072).
+The optimal rank increases modestly with sample size (rank 4 at n=5000, rank 8 at n=8000), consistent with standard bias-variance behavior: more data supports slightly higher-capacity models. This does not constitute evidence of intrinsic low-dimensional structure --- it reflects the regularization benefit of low-rank constraints in an underdetermined regime.
 
 ### 3.5 Next-Token Probe Transfer
 
@@ -313,17 +319,16 @@ Our use of debiased CKA with permutation calibration addresses the core concern 
 
 This illustrates a key distinction: **statistical significance is not practical significance.** The Aristotelian calibration reveals that the signal is real but insufficient for the kinds of transfer applications assumed by the Platonic hypothesis.
 
-### 4.3 Cross-Model Structure Is Real but Ultra-Low-Dimensional
+### 4.3 Cross-Model Structure Is Real but Weak
 
-The rank ablation provides our strongest finding. The cross-model signal:
+The cross-model signal has several notable properties:
 
-1. **Is real** --- permutation tests confirm CKA >> null (Cohen's d > 100)
-2. **Is ultra-low-dimensional** --- rank 4--8 outperforms all higher ranks and full-rank methods
-3. **Is not a regularization artifact** --- the optimal rank does not increase with sample size
-4. **Contains some structure** --- at n=8000, rank 8 achieves test loss < 1.0 (better than mean prediction)
-5. **Carries coarse semantic signal** --- binary probe transfer shows 63--81% accuracy on sentiment, topic, and toxicity tasks, well above the 50--63% chance baselines
+1. **Statistically real** --- permutation tests confirm CKA >> null (Cohen's d > 100, p < 0.005)
+2. **Functionally meaningful for coarse tasks** --- binary probe transfer achieves 63--81% accuracy on sentiment, topic, and toxicity, well above chance
+3. **Insufficient for fine-grained tasks** --- next-token prediction transfer fails completely (~0% accuracy) across architectures
+4. **Alignment is underdetermined** --- with d = 1536--3072 and n = 5000--10000, full-rank methods (millions of parameters) overfit severely; low-rank methods generalize better due to the bias-variance tradeoff, not because the signal is intrinsically low-dimensional
 
-This suggests that architecturally distinct models share approximately 4--8 common representational dimensions encoding coarse document-level semantics (topic, sentiment, toxicity) --- features that any language model must encode regardless of architecture, tokenizer, or training data.
+This suggests that architecturally distinct models share coarse document-level semantic features (topic, sentiment, toxicity) that survive linear alignment, but not the fine-grained token-level structure needed for detailed prediction.
 
 ### 4.4 Methodological Gaps in Prior Work
 
@@ -349,13 +354,11 @@ Compared to the two concurrent papers on cross-model transfer:
 
 2. CKA does not increase with model scale: 3B cross-family pairs (max CKA = 0.181) show similar or lower similarity than 1B pairs (max CKA = 0.208).
 
-3. All CKA scores are highly significant under permutation calibration (p = 0.000, Cohen's d = 100--150), confirming the signal is real despite being weak. This aligns with the Aristotelian critique that significance and magnitude are distinct.
+3. All CKA scores are highly significant under permutation calibration (p < 0.005, Cohen's d = 100--150), confirming the signal is real despite being weak. This aligns with the Aristotelian critique that statistical significance and practical significance are distinct.
 
-4. **The cross-model shared subspace has intrinsic dimensionality of approximately 4--8.** Low-rank alignment at rank 4--8 outperforms rank 32, rank 256, and full-rank ridge regression on held-out data. The optimal rank does not increase with sample size (tested from n=500 to n=8000), ruling out regularization as an explanation.
+4. **Full-rank alignment methods overfit severely** due to the bias-variance tradeoff. With d = 1536--3072 and n = 8000, ridge regression has millions of free parameters and achieves test loss of 1.13 (worse than mean prediction) despite train loss of 0.75. Low-rank methods generalize better (test loss 0.98) by constraining parameter count.
 
-5. Full-rank methods (ridge, LASSO) consistently overfit: lower train loss but much higher test loss than low-rank methods. Ridge test loss is 1.13 vs 0.977 for rank 8 at n=8000.
-
-6. The best alignment mapping explains only ~4.7% of target variance (rank 8, Eval B, n=8000), far too low for direct cross-model tool transfer.
+5. The best alignment mapping explains only ~4.7% of target variance, far too low for direct cross-model tool transfer at full resolution.
 
 7. The within-family positive control (Eval C: Llama-1B vs Llama-3B, CKA = 0.91) validates our methodology and shows that representational convergence does occur within architecture families.
 
