@@ -97,13 +97,15 @@ Binary classification is a more sensitive test --- even a weak directional signa
 ![Binary Probe Transfer](outputs/binary_probe_transfer/binary_probe_results.png)
 *Cross-architecture transfer (left column) beats chance on ALL three tasks. Within-family (right column) approaches native accuracy.*
 
-| Task | Cross-Arch (Gemma->Qwen) | Within-Family (Llama 1B->3B) | Chance |
-|------|--------------------------|------------------------------|--------|
-| AG News (topic) | **81.4%** | 93.7% | 51.3% |
-| SST-2 (sentiment) | **63.2%** | 78.6% | 53.7% |
-| ToxiGen (toxicity) | **71.6%** | 76.1% | 63.0% |
+| Task | Cross-Arch (Gemma->Qwen) | 95% CI | Within-Family (Llama 1B->3B) | Chance |
+|------|--------------------------|--------|------------------------------|--------|
+| AG News (topic) | **81.4%** | [76.6%, 86.2%] | 93.7% | 51.3% |
+| SST-2 (sentiment) | **63.2%** | [58.9%, 67.4%] | 78.6% | 53.7% |
+| ToxiGen (toxicity) | **71.6%** | [66.2%, 77.1%] | 76.1% | 63.0% |
 
-Cross-architecture alignment carries real task signal for binary classification. The next-token failure was about task granularity, not absence of functional signal. Topic detection transfers best (81.4%), suggesting the shared dimensions encode global document-level semantics more strongly than fine-grained features.
+**Statistical significance (cross-architecture):** All three cross-arch results are significant despite using only 3 random seeds (conservative t-test with 2 degrees of freedom). AG News: t(2) = 26.7, p = 0.0007, Cohen's d = 18.9. SST-2: t(2) = 9.6, p = 0.005, Cohen's d = 6.8. ToxiGen: t(2) = 6.8, p = 0.011, Cohen's d = 4.8. Binomial tests on individual predictions give p < 1e-9 for all three tasks. The 95% confidence intervals do not overlap with the majority-class baseline for any task.
+
+Cross-architecture alignment carries real task signal for binary classification. The next-token failure was about task granularity (32k classes scatter probability mass across thousands of wrong tokens), not absence of functional signal. Topic detection transfers best (81.4%), suggesting the shared structure encodes global document-level semantics more strongly than fine-grained features.
 
 ---
 
@@ -113,13 +115,19 @@ Cross-architecture alignment carries real task signal for binary classification.
 
 Standard CKA (Kornblith et al., 2019) can overstate similarity in high-dimensional settings (Chun et al., 2026). We use the **debiased HSIC estimator** throughout, which zeros out kernel matrix diagonals and applies bias-correction terms, providing more conservative estimates.
 
-### Permutation Calibration
+### Permutation Calibration (Aristotelian-style)
 
-For each layer pair, we compute observed CKA, then generate a null distribution by shuffling sample indices (breaking the correspondence between models). We report:
-- **Cohen's d** = (observed - null_mean) / null_std --- measures effect size in standard deviations
-- **p-value** = fraction of null CKA values >= observed (bounded by 1/n_permutations)
+Standard CKA scores are hard to interpret in isolation --- a CKA of 0.2 could be "high" or "low" depending on dimensionality and sample size. Following Chun et al. (2026), we calibrate CKA against a null distribution:
 
-Both observed and null CKA use the same debiased estimator, ensuring an apples-to-apples comparison.
+1. **Compute observed CKA** between activation matrices X (model A) and Y (model B) using the debiased HSIC estimator
+2. **Generate null distribution:** For each of 200 permutations, randomly shuffle the sample indices of Y (breaking the one-to-one correspondence between models while preserving each model's marginal statistics), then compute CKA on the shuffled pair
+3. **Compare:** If the observed CKA is merely an artifact of dimensionality or marginal statistics, it should fall within the null distribution. If it reflects genuine shared structure, it should be far above
+
+We report two statistics:
+- **Cohen's d** = (observed CKA - null_mean) / null_std --- the effect size, measuring how many standard deviations above the null the observed value falls. By convention, d > 0.8 is "large"; our values range from 107 to 687.
+- **p-value** = fraction of permuted CKA values >= observed CKA. With 200 permutations, the minimum reportable p-value is 1/200 = 0.005. In all tests, zero permutations exceeded the observed CKA, giving p < 0.005.
+
+**Crucially:** Both observed and null CKA use the same debiased HSIC estimator, ensuring an apples-to-apples comparison. This controls for the dimensionality inflation confound: if CKA were inflated by high dimensionality alone, the null distribution would show similarly inflated values.
 
 ### Alignment Methods
 

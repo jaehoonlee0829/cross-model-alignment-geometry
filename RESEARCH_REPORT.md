@@ -85,14 +85,17 @@ where K̃ and L̃ are K and L with zeroed diagonals. This provides more conserva
 
 #### Permutation Calibration (Aristotelian-style)
 
-Following Chun et al. (2026), we go beyond raw CKA scores and compute **calibrated CKA** via permutation testing. For each layer pair, we:
+Raw CKA scores are hard to interpret in isolation --- a CKA of 0.2 could be "high" or "low" depending on dimensionality and sample size. Following Chun et al. (2026), we calibrate CKA against a null distribution constructed by permutation testing:
 
-1. Compute observed CKA between X and Y
-2. Generate a null distribution by permuting sample indices of Y (breaking correspondence with X) and computing CKA on each permutation (200--1000 permutations)
-3. Report the **calibrated CKA** = (observed - null_mean) / null_std (i.e., Cohen's d effect size)
-4. Report the p-value = fraction of null CKA values >= observed CKA
+1. **Compute observed CKA** between activation matrices X (model A, shape n x d_a) and Y (model B, shape n x d_b) using the debiased HSIC estimator
+2. **Generate null distribution:** For each of 200 permutations, randomly shuffle the sample indices of Y (breaking the one-to-one correspondence between the two models' responses to the same inputs, while preserving each model's marginal activation statistics), then compute CKA on the shuffled pair using the same debiased estimator
+3. **Compare:** If the observed CKA merely reflects dimensionality artifacts or marginal statistics (e.g., mean/variance structure), it should fall within the null distribution. If it reflects genuine shared representational structure (i.e., both models respond similarly to the *same* inputs), it should lie far above the null
 
-**Crucially:** Both observed and null CKA use the same debiased HSIC estimator, ensuring an apples-to-apples comparison. This controls for the dimensionality inflation confound: if high CKA were merely an artifact of dimensionality, the null distribution would show similarly inflated values.
+We report two statistics:
+- **Cohen's d** = (observed CKA - null_mean) / null_std --- the effect size, measuring how many standard deviations above the null the observed value falls. By convention, d > 0.8 is "large"; our values range from 107 (cross-family) to 687 (within-family).
+- **p-value** = fraction of permuted CKA values >= observed CKA. With 200 permutations, the minimum reportable p-value is 1/200 = 0.005. In all tests, zero permutations exceeded the observed CKA, giving p < 0.005 for all pairs tested.
+
+**Crucially:** Both observed and null CKA use the same debiased HSIC estimator, ensuring an apples-to-apples comparison. This controls for the dimensionality inflation confound identified by Chun et al. (2026): if high CKA were merely an artifact of high dimensionality, the null distribution would show similarly inflated values.
 
 ### 2.3 Alignment Methods
 
@@ -286,17 +289,21 @@ Binary classification is a much more forgiving test: even a weak directional sig
 
 **Results summary:**
 
-| Task | Cross-Arch (Gemma->Qwen) | Within-Family (Llama 1B->3B) | Chance |
-|------|--------------------------|------------------------------|--------|
-| AG News (sports vs not) | **81.4%** | 93.7% | 51.3% |
-| SST-2 (sentiment) | **63.2%** | 78.6% | 53.7% |
-| ToxiGen (toxicity) | **71.6%** | 76.1% | 63.0% |
+| Task | Cross-Arch (Gemma->Qwen) | 95% CI | p (t-test) | Cohen's d | Within-Family | Chance |
+|------|--------------------------|--------|------------|-----------|---------------|--------|
+| AG News (sports) | **81.4%** | [76.6%, 86.2%] | 0.0007 | 18.9 | 93.7% | 51.3% |
+| SST-2 (sentiment) | **63.2%** | [58.9%, 67.4%] | 0.005 | 6.8 | 78.6% | 53.7% |
+| ToxiGen (toxicity) | **71.6%** | [66.2%, 77.1%] | 0.011 | 4.8 | 76.1% | 63.0% |
 
-**Key finding:** Cross-architecture alignment *does* preserve coarse semantic signal. The 0% result from next-token prediction was about task granularity (32k classes scatter probability mass), not about the alignment being functionally empty. Binary sentiment, topic, and toxicity information survives cross-architecture alignment.
+*95% confidence intervals and p-values from one-sample t-test (3 seeds, 2 df) against the majority-class baseline. Binomial tests on individual predictions give p < 1e-9 for all three tasks.*
 
-**Task-dependent transfer quality.** AG News topic detection transfers best (81.4%) because topic is a more global/distributed feature than fine-grained sentiment (63.2%). This suggests the ~4--8 shared dimensions encode coarse document-level semantics rather than fine-grained token-level predictions.
+**Statistical significance.** All three cross-architecture results are statistically significant despite the conservative t-test with only 2 degrees of freedom (3 random seeds). The 95% confidence intervals do not overlap with the majority-class baseline for any task. Toxicity transfer has the smallest margin (CI lower bound 66.2% vs 63.0% chance, Cohen's d = 4.8) but remains clearly significant.
 
-**Rank scaling differs from geometric alignment.** For binary probes, best cross-arch transfer occurs at high ranks (128--256), unlike geometric alignment where rank 4--8 is optimal. Binary classification is more forgiving of the overfitting that hurts geometric alignment quality, because it only needs the projected features to be directionally correct, not metrically precise.
+**Key finding:** Cross-architecture alignment *does* preserve coarse semantic signal. The 0% result from next-token prediction was about task granularity (32k classes scatter probability mass across thousands of wrong tokens), not about the alignment being functionally empty.
+
+**Task-dependent transfer quality.** AG News topic detection transfers best (81.4%) because topic is a more global/distributed feature than fine-grained sentiment (63.2%). This suggests the shared structure encodes coarse document-level semantics more strongly than fine-grained features.
+
+**Rank scaling differs from geometric alignment.** For binary probes, best cross-arch transfer occurs at high ranks (128--256), unlike geometric alignment loss where low ranks generalize best. Binary classification is more forgiving of overfitting because it only needs features to be directionally correct, not metrically precise.
 
 ## 4. Discussion
 
