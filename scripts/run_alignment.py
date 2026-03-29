@@ -70,19 +70,66 @@ def main():
         X = acts_a[la].numpy()
         Y = acts_b[lb].numpy()
 
-        alignments = learn_alignment(
-            X, Y,
-            method=config.alignment.method,
-            train_fraction=config.alignment.train_fraction,
-            regularization=config.alignment.regularization,
-            seed=config.seed,
-        )
+        # Determine which methods to run based on config
+        method = config.alignment.method
 
-        # Save alignments
-        for method_name, result in alignments.items():
-            key = f"layer_{la}_to_{lb}_{method_name}"
-            all_alignments[key] = result
-            save_alignment(result, align_dir / f"{key}.npz")
+        if method == "all":
+            # Run procrustes (if dims match) + linear with their regularization
+            base_alignments = learn_alignment(
+                X, Y,
+                method="all",
+                train_fraction=config.alignment.train_fraction,
+                regularization=config.alignment.regularization,
+                seed=config.seed,
+            )
+            # Remove low_rank and lasso from base — we'll run them separately with proper params
+            for method_name, result in base_alignments.items():
+                if method_name in ("low_rank", "lasso"):
+                    continue
+                key = f"layer_{la}_to_{lb}_{method_name}"
+                all_alignments[key] = result
+                save_alignment(result, align_dir / f"{key}.npz")
+
+            # Run low-rank at each specified rank
+            for rank in config.alignment.low_rank_ranks:
+                lr_alignments = learn_alignment(
+                    X, Y,
+                    method="low_rank",
+                    train_fraction=config.alignment.train_fraction,
+                    regularization=config.alignment.low_rank_regularization,
+                    rank=rank,
+                    seed=config.seed,
+                )
+                for mn, result in lr_alignments.items():
+                    key = f"layer_{la}_to_{lb}_{mn}_rank{rank}"
+                    all_alignments[key] = result
+                    save_alignment(result, align_dir / f"{key}.npz")
+
+            # Run lasso with its own regularization
+            lasso_alignments = learn_alignment(
+                X, Y,
+                method="lasso",
+                train_fraction=config.alignment.train_fraction,
+                regularization=config.alignment.lasso_regularization,
+                seed=config.seed,
+            )
+            for mn, result in lasso_alignments.items():
+                key = f"layer_{la}_to_{lb}_{mn}"
+                all_alignments[key] = result
+                save_alignment(result, align_dir / f"{key}.npz")
+        else:
+            # Single method or "both" — run as-is
+            alignments = learn_alignment(
+                X, Y,
+                method=method,
+                train_fraction=config.alignment.train_fraction,
+                regularization=config.alignment.regularization,
+                seed=config.seed,
+            )
+            for method_name, result in alignments.items():
+                key = f"layer_{la}_to_{lb}_{method_name}"
+                all_alignments[key] = result
+                save_alignment(result, align_dir / f"{key}.npz")
 
     if args.alignment_only:
         print("\n--alignment-only flag set, skipping oracle transfer test.")

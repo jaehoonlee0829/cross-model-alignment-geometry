@@ -37,12 +37,15 @@ class CKAConfig:
 
 @dataclass
 class AlignmentConfig:
-    method: str = "both"  # "procrustes" | "linear" | "both"
+    method: str = "both"  # "procrustes" | "linear" | "low_rank" | "lasso" | "all" | "both"
     train_fraction: float = 0.8
     orthogonal: bool = True
     regularization: float = 1e-4
     epochs: int = 100
     lr: float = 1e-3
+    low_rank_ranks: list[int] = field(default_factory=lambda: [64])
+    low_rank_regularization: float = 1e-4
+    lasso_regularization: float = 1e-3
 
 
 @dataclass
@@ -82,6 +85,9 @@ class Config:
             regularization=align_raw.get("linear", {}).get("regularization", 1e-4),
             epochs=align_raw.get("linear", {}).get("epochs", 100),
             lr=align_raw.get("linear", {}).get("lr", 1e-3),
+            low_rank_ranks=align_raw.get("low_rank", {}).get("ranks", [64]),
+            low_rank_regularization=align_raw.get("low_rank", {}).get("regularization", 1e-4),
+            lasso_regularization=align_raw.get("lasso", {}).get("regularization", 1e-3),
         )
         oracle = OracleConfig(**raw.get("oracle", {}))
 

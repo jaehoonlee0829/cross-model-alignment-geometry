@@ -1,0 +1,68 @@
+# Cross-Model Activation Oracle — Phase E Config
+# Cross-family comparison at ~2-3B scale: Llama-3.2-3B vs Gemma-2-2B
+# Llama d_model=3072 (28 layers), Gemma d_model=2304 (26 layers)
+# Tests cross-family alignment: Llama (Meta) vs Gemma (Google)
+# Complementary to Phase D (Llama vs Pythia) — different training data + architecture
+
+# Models (Phase E: Cross-Family at ~2-3B Scale)
+model_a:
+  name: "meta-llama/Llama-3.2-3B"
+  alias: "llama-3b"
+  d_model: 3072
+
+model_b:
+  name: "google/gemma-2-2b"
+  alias: "gemma-2b"
+  d_model: 2304
+
+# Activation extraction
+extraction:
+  dataset: "NeelNanda/pile-10k"
+  n_prompts: 10000
+  max_seq_len: 128
+  batch_size: 16
+  token_position: "last"
+  layer_fractions: [0.0, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875, 1.0]
+  dtype: "float32"
+
+# CKA analysis
+cka:
+  kernel: "linear"
+  rbf_sigma: null
+  debiased: true
+  subsample_n: 5000
+
+# Alignment (Phase E: Multiple methods for mismatched dimensions)
+alignment:
+  method: "all"
+  train_fraction: 0.8
+  low_rank:
+    ranks: [32, 64, 128, 256]
+    regularization: 1.0e-4
+  linear:
+    regularization: 1.0e-4
+  lasso:
+    regularization: 1.0e-3
+
+# Oracle transfer
+oracle:
+  adapter_id: null
+  base_model: "model_b"
+  test_prompts:
+    - "The capital of France is"
+    - "Water freezes at"
+    - "The theory of relativity was developed by"
+
+# Output
+output:
+  dir: "outputs/phase_e"
+  save_activations: true
+  save_alignments: true
+  save_plots: true
+  wandb:
+    enabled: false
+
+# Compute
+compute:
+  device: "cuda"
+  seed: 42

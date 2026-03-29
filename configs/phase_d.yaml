@@ -1,0 +1,68 @@
+# Cross-Model Activation Oracle — Phase D Config
+# Bigger mismatched-dimension experiment: Llama-3.2-3B vs Pythia-2.8B
+# Llama d_model=3072 (28 layers), Pythia d_model=2560 (32 layers)
+# ~3x scale of Phase A (1B) — tests if CKA increases with model size
+# Answers: does the Platonic Representation Hypothesis hold better at scale?
+
+# Models (Phase D: Mismatched Dimensions at ~3B Scale)
+model_a:
+  name: "meta-llama/Llama-3.2-3B"
+  alias: "llama-3b"
+  d_model: 3072
+
+model_b:
+  name: "EleutherAI/pythia-2.8b"
+  alias: "pythia-3b"
+  d_model: 2560
+
+# Activation extraction
+extraction:
+  dataset: "NeelNanda/pile-10k"
+  n_prompts: 10000
+  max_seq_len: 128
+  batch_size: 16  # Smaller batch for bigger models
+  token_position: "last"
+  layer_fractions: [0.0, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875, 1.0]
+  dtype: "float32"
+
+# CKA analysis
+cka:
+  kernel: "linear"
+  rbf_sigma: null
+  debiased: true
+  subsample_n: 5000
+
+# Alignment (Phase D: Multiple methods for mismatched dimensions)
+alignment:
+  method: "all"
+  train_fraction: 0.8
+  low_rank:
+    ranks: [32, 64, 128, 256]
+    regularization: 1.0e-4
+  linear:
+    regularization: 1.0e-4
+  lasso:
+    regularization: 1.0e-3
+
+# Oracle transfer
+oracle:
+  adapter_id: null
+  base_model: "model_b"
+  test_prompts:
+    - "The capital of France is"
+    - "Water freezes at"
+    - "The theory of relativity was developed by"
+
+# Output
+output:
+  dir: "outputs/phase_d"
+  save_activations: true
+  save_alignments: true
+  save_plots: true
+  wandb:
+    enabled: false
+
+# Compute
+compute:
+  device: "cuda"
+  seed: 42

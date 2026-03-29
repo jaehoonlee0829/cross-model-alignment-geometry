@@ -284,20 +284,15 @@ def low_rank_alignment(
         B = np.linalg.solve(B_lhs, B_rhs)
 
         # Solve for A: minimize ||X @ A @ B - Y||_F^2 + λ||A||_F^2
-        # Reshape: (Y @ B^T) is target, solve X @ A = (Y @ B^T) / ||B||^2
-        YBt = Y_centered @ B.T
-        AB_rhs = YBt
-        AB_lhs = X_centered.T @ X_centered + regularization * np.eye(d_source)
-        A_temp = np.linalg.solve(AB_lhs, X_centered.T @ YBt @ B @ np.linalg.pinv(B.T @ B))
-        # This is a simplification; more carefully:
-        # We want to minimize ||X @ A @ B - Y||_F^2
-        # Setting gradient w.r.t. A to zero: X^T (X @ A @ B - Y) @ B^T = λ A
-        # So: (X^T X @ A @ B - X^T Y) @ B^T + λ A = 0
-        # Rearrange: X^T X @ A @ B @ B^T + λ A = X^T Y @ B^T
-        # Let's use a simpler update: A = (X^T X + λI)^{-1} X^T Y @ B @ (B^T @ B)^{-1}
+        # Rewrite as: minimize ||X @ A - Y @ B^+ ||_F^2 where B^+ = B^T(BB^T)^{-1}
+        # This decouples to a standard ridge problem for A.
+        # B is (rank, d_target), B^T is (d_target, rank), BB^T is (rank, rank)
+        B_pinv = B.T @ np.linalg.solve(B @ B.T + regularization * np.eye(rank), np.eye(rank))
+        # B_pinv: (d_target, rank) — pseudo-inverse of B
+        target_A = Y_centered @ B_pinv  # (n_train, rank)
         A = np.linalg.solve(
             X_centered.T @ X_centered + regularization * np.eye(d_source),
-            X_centered.T @ Y_centered @ B.T @ np.linalg.pinv(B.T @ B),
+            X_centered.T @ target_A,
         )
 
     # Compute full W = A @ B
