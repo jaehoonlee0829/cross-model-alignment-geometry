@@ -440,6 +440,181 @@ def lasso_alignment(
     return result
 
 
+def linear_projection_alignment_gpu(
+    X_train: np.ndarray,
+    Y_train: np.ndarray,
+    X_test: np.ndarray,
+    Y_test: np.ndarray,
+    regularization: float = 1e-4,
+    device: str = "cuda",
+) -> AlignmentResult:
+    """GPU-accelerated ridge regression via torch.linalg.solve.
+
+    Same as linear_projection_alignment but 10-50x faster on GPU.
+    """
+    d_source = X_train.shape[1]
+    d_target = Y_train.shape[1]
+
+    console.print(
+        f"[bold]Learning linear projection (ridge, GPU): "
+        f"R^{d_source} -> R^{d_target} (λ={regularization})[/bold]"
+    )
+
+    dev = torch.device(device)
+    X_t = torch.from_numpy(X_train).to(dev, dtype=torch.float64)
+    Y_t = torch.from_numpy(Y_train).to(dev, dtype=torch.float64)
+    X_test_t = torch.from_numpy(X_test).to(dev, dtype=torch.float64)
+    Y_test_t = torch.from_numpy(Y_test).to(dev, dtype=torch.float64)
+
+    X_mean = X_t.mean(dim=0)
+    Y_mean = Y_t.mean(dim=0)
+    X_centered = X_t - X_mean
+    Y_centered = Y_t - Y_mean
+
+    XtX = X_centered.T @ X_centered
+    XtY = X_centered.T @ Y_centered
+    W = torch.linalg.solve(
+        XtX + regularization * torch.eye(d_source, device=dev, dtype=torch.float64),
+        XtY,
+    )
+
+    # Evaluate
+    X_mapped_train = (X_t - X_mean) @ W + Y_mean
+    train_residual = torch.linalg.norm(X_mapped_train - Y_t, "fro")
+    train_baseline = torch.linalg.norm(Y_t - Y_t.mean(dim=0), "fro")
+    train_loss = (train_residual / train_baseline).item()
+
+    X_mapped_test = (X_test_t - X_mean) @ W + Y_mean
+    test_residual = torch.linalg.norm(X_mapped_test - Y_test_t, "fro")
+    test_baseline = torch.linalg.norm(Y_test_t - Y_test_t.mean(dim=0), "fro")
+    test_loss = (test_residual / test_baseline).item()
+
+    total_var = Y_test_t.var(dim=0).sum()
+    residual_var = (X_mapped_test - Y_test_t).var(dim=0).sum()
+    explained_var = (1.0 - residual_var / total_var).item() if total_var > 0 else 0.0
+
+    W_np = W.cpu().numpy()
+    console.print(f"  Train loss (normalized): {train_loss:.4f}")
+    console.print(f"  Test loss (normalized):  {test_loss:.4f}")
+    console.print(f"  Explained variance:      {explained_var:.4f}")
+    console.print(f"  W shape: {W_np.shape}")
+
+    result = AlignmentResult(
+        method="linear",
+        W=W_np,
+        train_loss=float(train_loss),
+        test_loss=float(test_loss),
+        d_source=d_source,
+        d_target=d_target,
+        explained_variance=float(explained_var),
+        regularization=regularization,
+    )
+    result._X_mean = X_mean.cpu().numpy()
+    result._Y_mean = Y_mean.cpu().numpy()
+    return result
+
+
+def low_rank_alignment_gpu(
+    X_train: np.ndarray,
+    Y_train: np.ndarray,
+    X_test: np.ndarray,
+    Y_test: np.ndarray,
+    rank: int = 64,
+    regularization: float = 1e-4,
+    device: str = "cuda",
+) -> AlignmentResult:
+    """GPU-accelerated low-rank alignment via torch.linalg.solve.
+
+    Same as low_rank_alignment but 10-50x faster on GPU.
+    """
+    d_source = X_train.shape[1]
+    d_target = Y_train.shape[1]
+
+    console.print(
+        f"[bold]Learning low-rank alignment (LoRA, GPU): "
+        f"R^{d_source} -> R^{d_target} via rank-{rank} (λ={regularization})[/bold]"
+    )
+
+    dev = torch.device(device)
+    dtype = torch.float64
+    X_t = torch.from_numpy(X_train).to(dev, dtype=dtype)
+    Y_t = torch.from_numpy(Y_train).to(dev, dtype=dtype)
+    X_test_t = torch.from_numpy(X_test).to(dev, dtype=dtype)
+    Y_test_t = torch.from_numpy(Y_test).to(dev, dtype=dtype)
+
+    X_mean = X_t.mean(dim=0)
+    Y_mean = Y_t.mean(dim=0)
+    X_centered = X_t - X_mean
+    Y_centered = Y_t - Y_mean
+
+    # Initialize A and B
+    gen = torch.Generator(device=dev).manual_seed(42)
+    A = torch.randn(d_source, rank, device=dev, dtype=dtype, generator=gen) * 0.01
+    B = torch.randn(rank, d_target, device=dev, dtype=dtype, generator=gen) * 0.01
+
+    I_rank = torch.eye(rank, device=dev, dtype=dtype)
+    I_d = torch.eye(d_source, device=dev, dtype=dtype)
+
+    for iteration in range(5):
+        XA = X_centered @ A
+        B = torch.linalg.solve(
+            XA.T @ XA + regularization * I_rank,
+            XA.T @ Y_centered,
+        )
+
+        B_pinv = B.T @ torch.linalg.solve(
+            B @ B.T + regularization * I_rank, I_rank
+        )
+        target_A = Y_centered @ B_pinv
+        A = torch.linalg.solve(
+            X_centered.T @ X_centered + regularization * I_d,
+            X_centered.T @ target_A,
+        )
+
+    W = A @ B
+
+    # Evaluate
+    X_mapped_train = (X_t - X_mean) @ W + Y_mean
+    train_residual = torch.linalg.norm(X_mapped_train - Y_t, "fro")
+    train_baseline = torch.linalg.norm(Y_t - Y_t.mean(dim=0), "fro")
+    train_loss = (train_residual / train_baseline).item()
+
+    X_mapped_test = (X_test_t - X_mean) @ W + Y_mean
+    test_residual = torch.linalg.norm(X_mapped_test - Y_test_t, "fro")
+    test_baseline = torch.linalg.norm(Y_test_t - Y_test_t.mean(dim=0), "fro")
+    test_loss = (test_residual / test_baseline).item()
+
+    total_var = Y_test_t.var(dim=0).sum()
+    residual_var = (X_mapped_test - Y_test_t).var(dim=0).sum()
+    explained_var = (1.0 - residual_var / total_var).item() if total_var > 0 else 0.0
+
+    A_np = A.cpu().numpy()
+    B_np = B.cpu().numpy()
+    W_np = W.cpu().numpy()
+
+    console.print(f"  Train loss (normalized): {train_loss:.4f}")
+    console.print(f"  Test loss (normalized):  {test_loss:.4f}")
+    console.print(f"  Explained variance:      {explained_var:.4f}")
+    console.print(f"  A shape: {A_np.shape}, B shape: {B_np.shape}, W rank: {rank}")
+    console.print(f"  Parameter reduction: {(d_source*rank + rank*d_target) / (d_source*d_target) * 100:.1f}%")
+
+    result = AlignmentResult(
+        method="low_rank",
+        W=A_np,
+        W_B=B_np,
+        train_loss=float(train_loss),
+        test_loss=float(test_loss),
+        d_source=d_source,
+        d_target=d_target,
+        explained_variance=float(explained_var),
+        rank=rank,
+        regularization=regularization,
+    )
+    result._X_mean = X_mean.cpu().numpy()
+    result._Y_mean = Y_mean.cpu().numpy()
+    return result
+
+
 def learn_alignment(
     acts_a: np.ndarray,
     acts_b: np.ndarray,

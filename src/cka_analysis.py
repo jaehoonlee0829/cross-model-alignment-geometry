@@ -127,6 +127,70 @@ def compute_cka(
     return float(hsic_kl / denom)
 
 
+def permutation_test_cka(
+    X: np.ndarray,
+    Y: np.ndarray,
+    kernel: str = "linear",
+    debiased: bool = True,
+    n_permutations: int = 1000,
+    seed: int = 42,
+) -> dict:
+    """Aristotelian-style permutation calibration for CKA.
+
+    Shuffles sample indices of Y to break correspondence with X,
+    computes CKA on each permutation to build null distribution,
+    then reports calibrated CKA (effect size).
+
+    This controls for the dimensionality inflation confound identified
+    by Chun et al. (2026) "Revisiting the Platonic Representation
+    Hypothesis: An Aristotelian View" (arxiv.org/abs/2602.14486).
+
+    Args:
+        X: Activations from model A, shape (n_samples, d_model_a)
+        Y: Activations from model B, shape (n_samples, d_model_b)
+        kernel: "linear" or "rbf"
+        debiased: Use debiased HSIC estimator
+        n_permutations: Number of permutations for null distribution
+        seed: Random seed
+
+    Returns:
+        Dict with keys:
+        - observed_cka: float
+        - null_mean: float
+        - null_std: float
+        - calibrated_cka: float  (= (observed - null_mean) / null_std, i.e. effect size)
+        - p_value: float  (fraction of null >= observed)
+        - null_95th: float
+        - n_permutations: int
+    """
+    rng = np.random.default_rng(seed)
+
+    observed = compute_cka(X, Y, kernel=kernel, debiased=debiased)
+
+    null_ckas = []
+    for i in range(n_permutations):
+        perm = rng.permutation(X.shape[0])
+        null_cka = compute_cka(X[perm], Y, kernel=kernel, debiased=debiased)
+        null_ckas.append(null_cka)
+
+    null_ckas = np.array(null_ckas)
+    null_mean = float(null_ckas.mean())
+    null_std = float(null_ckas.std())
+
+    calibrated = (observed - null_mean) / null_std if null_std > 0 else float('inf')
+    p_value = float(np.mean(null_ckas >= observed))
+
+    return {
+        "observed_cka": float(observed),
+        "null_mean": null_mean,
+        "null_std": null_std,
+        "calibrated_cka": calibrated,
+        "p_value": p_value,
+        "null_95th": float(np.percentile(null_ckas, 95)),
+        "n_permutations": n_permutations,
+    }
+
+
 def compute_cka_matrix(
     acts_a: dict[int, torch.Tensor],
     acts_b: dict[int, torch.Tensor],

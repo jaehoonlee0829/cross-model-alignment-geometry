@@ -1,0 +1,69 @@
+# Cross-Model Activation Oracle — Eval C Config
+# Within-family positive control: Llama-3.2-1B vs Llama-3.2-3B
+# Same architecture family (Meta Llama), different scale
+# Llama-1B d_model=2048 (16 layers), Llama-3B d_model=3072 (28 layers)
+# If CKA is NOT much higher than cross-family (~0.2), methodology may be flawed
+# If CKA IS high (~0.4-0.7+), validates that pipeline detects real alignment
+
+# Models (Eval C: Within-Family Positive Control)
+model_a:
+  name: "meta-llama/Llama-3.2-1B"
+  alias: "llama-1b"
+  d_model: 2048
+
+model_b:
+  name: "meta-llama/Llama-3.2-3B"
+  alias: "llama-3b"
+  d_model: 3072
+
+# Activation extraction
+extraction:
+  dataset: "NeelNanda/pile-10k"
+  n_prompts: 10000
+  max_seq_len: 128
+  batch_size: 32
+  token_position: "last"
+  layer_fractions: [0.0, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875, 1.0]
+  dtype: "float32"
+
+# CKA analysis
+cka:
+  kernel: "linear"
+  rbf_sigma: null
+  debiased: true
+  subsample_n: 5000
+
+# Alignment (Eval C: expanded rank sweep including lower ranks)
+alignment:
+  method: "all"
+  train_fraction: 0.8
+  low_rank:
+    ranks: [4, 8, 16, 32, 64, 128, 256]
+    regularization: 1.0e-4
+  linear:
+    regularization: 1.0e-4
+  lasso:
+    regularization: 1.0e-3
+
+# Oracle transfer
+oracle:
+  adapter_id: null
+  base_model: "model_b"
+  test_prompts:
+    - "The capital of France is"
+    - "Water freezes at"
+    - "The theory of relativity was developed by"
+
+# Output
+output:
+  dir: "outputs/eval_c"
+  save_activations: true
+  save_alignments: true
+  save_plots: true
+  wandb:
+    enabled: false
+
+# Compute
+compute:
+  device: "cuda"
+  seed: 42

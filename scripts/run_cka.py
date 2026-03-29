@@ -18,6 +18,7 @@ from src.activation_extraction import load_activations
 from src.cka_analysis import (
     compute_cka_matrix,
     find_best_layer_pairs,
+    permutation_test_cka,
     plot_cka_heatmap,
     print_cka_summary,
 )
@@ -86,6 +87,53 @@ def main():
         results_dir / "best_layer_pairs.npz",
         pairs=np.array(best_pairs),
     )
+
+    # Permutation tests on top-3 layer pairs (full sample count, not subsampled)
+    print("\n--- Permutation Tests (top-3 layer pairs, n_permutations=1000) ---")
+    import csv
+    perm_results = []
+    # Get top-3 by sorting all CKA values
+    all_pairs = []
+    for i, la in enumerate(layers_a):
+        for j, lb in enumerate(layers_b):
+            all_pairs.append((la, lb, cka_matrix[i, j]))
+    all_pairs.sort(key=lambda x: x[2], reverse=True)
+    top3 = all_pairs[:3]
+
+    for la, lb, cka_val in top3:
+        print(f"\n  Testing Layer {la} -> {lb} (CKA={cka_val:.4f})...")
+        X = acts_a[la].numpy()
+        Y = acts_b[lb].numpy()
+        result = permutation_test_cka(
+            X, Y,
+            kernel=kernel,
+            debiased=config.cka.debiased,
+            n_permutations=1000,
+            seed=config.seed,
+        )
+        print(f"    Observed CKA: {result['observed_cka']:.4f}")
+        print(f"    Null mean:    {result['null_mean']:.5f} +/- {result['null_std']:.5f}")
+        print(f"    Calibrated:   {result['calibrated_cka']:.1f} (Cohen's d)")
+        print(f"    p-value:      {result['p_value']:.4f}")
+        print(f"    Null 95th:    {result['null_95th']:.5f}")
+        perm_results.append({
+            "layer_a": la, "layer_b": lb,
+            "observed_cka": result["observed_cka"],
+            "null_mean": result["null_mean"],
+            "null_std": result["null_std"],
+            "calibrated_cka": result["calibrated_cka"],
+            "p_value": result["p_value"],
+            "null_95th": result["null_95th"],
+            "n_permutations": result["n_permutations"],
+        })
+
+    # Save permutation test results
+    perm_csv = results_dir / "permutation_tests.csv"
+    with open(perm_csv, "w", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=perm_results[0].keys())
+        writer.writeheader()
+        writer.writerows(perm_results)
+    print(f"\n  Permutation test results saved to {perm_csv}")
 
     print(f"\nResults saved to {results_dir}")
 
