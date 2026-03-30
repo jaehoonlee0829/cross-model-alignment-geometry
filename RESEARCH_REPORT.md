@@ -4,7 +4,7 @@
 
 We systematically characterize the geometry of shared representations across architecturally distinct language models at the 1--3B parameter scale. Using debiased Centered Kernel Alignment (CKA) with Aristotelian-style permutation calibration, we measure representational similarity between five model pairs spanning four architecture families (Llama, Pythia, Gemma, Qwen). We then learn alignment mappings via Orthogonal Procrustes, ridge regression, LASSO, and low-rank factorization at ranks 4--256, and perform a rank-vs-sample-size ablation to distinguish genuine low-dimensional structure from regularization artifacts.
 
-**Key findings:** (1) Cross-family CKA is consistently weak (max 0.10--0.22) but statistically significant (Cohen's d > 100, p < 0.005). (2) Within-family CKA (Llama-1B vs Llama-3B) is dramatically higher (max 0.91, mean 0.60), validating our methodology. (3) Low-rank alignment outperforms full-rank ridge regression due to the bias-variance tradeoff: full-rank methods have too many parameters and overfit. (4) CKA does not increase with model scale from 1B to 3B parameters. (5) Cross-architecture alignment carries coarse semantic signal for binary classification (topic 81%, toxicity 72%, sentiment 63%) despite failing completely on fine-grained next-token prediction.
+**Key findings:** (1) Cross-family CKA is consistently weak (max 0.10--0.22) but statistically significant (p < 0.002 for both max and mean CKA across all 81 layer pairs). (2) Within-family CKA (Llama-1B vs Llama-3B) is dramatically higher (max 0.91, mean 0.60), validating our methodology. (3) Frozen general alignment (learned on generic text) carries cross-architecture signal for topic classification (71.3%, +20pp above chance) but not for sentiment. (4) Task-specific cross-architecture alignment catastrophically overfits, performing at or below chance. (5) Fine-grained next-token prediction fails completely cross-architecture but succeeds within-family (93% of native accuracy).
 
 These results bear on the Platonic Representation Hypothesis (Huh et al., 2024), which we do not find supported at this scale for cross-family pairs, and align with the Aristotelian critique (Chun et al., 2026) that raw CKA without null calibration can overstate similarity. We compare our approach to two concurrent works on cross-model transfer (Activation Space Interventions Transfer, 2503.04429; Model Stitching for Linear Features, 2506.06609) and identify key methodological gaps that our rank analysis and CKA calibration address.
 
@@ -177,24 +177,29 @@ This is 4--9x higher than any cross-family pair, confirming that: (a) our pipeli
 ![Permutation Tests](outputs/plots/permutation_tests.png)
 *Figure 3b: Permutation tests across all evaluated layer pairs. Blue bars show observed CKA; red dots show null distribution (mean +/- 2 sigma). All observed values are >100 sigma above the null.*
 
-All tested layer pairs showed CKA scores far exceeding the null distribution, confirming that even the weak cross-family similarity is statistically genuine.
+We test **both** the max CKA (best layer pair) and the mean CKA across **all 81 layer pairs** to rule out cherry-picking. For each of 500 permutations, we shuffle sample indices (consistent n=5000, matching the CKA heatmap), recompute the full 9x9 CKA matrix, and record both max and mean.
 
-**Cohen's d** (effect size) measures how many standard deviations the observed CKA lies above the null distribution mean: d = (observed - null_mean) / null_std. Cohen's d > 0.8 is conventionally "large"; our values exceed 100, indicating the observed CKA is hundreds of standard deviations above chance.
+![Corrected Permutation Tests](outputs/plots/corrected_permutation_tests.png)
+*Figure 3c: Corrected permutation tests (500 perms, n=5000). Observed CKA exceeds the null 95th percentile by 156--1835x across all evals.*
 
-| Eval | Layer Pair | Observed CKA | Null Mean | Null Std | Cohen's d | p |
-|------|-----------|-------------|-----------|----------|-----------|---|
-| A | L13 -> L23 | 0.190 | -0.00005 | 0.00141 | 134.8 | < 0.005 |
-| A | L11 -> L23 | 0.180 | -0.00003 | 0.00141 | 127.8 | < 0.005 |
-| B | L18 -> L23 | 0.216 | -0.00008 | 0.00144 | 149.8 | < 0.005 |
-| B | L21 -> L23 | 0.196 | -0.00010 | 0.00144 | 136.4 | < 0.005 |
-| C | L0 -> L0 | 0.915 | -0.00017 | 0.00133 | **687.0** | < 0.005 |
-| C | L15 -> L27 | 0.864 | -0.00003 | 0.00138 | **624.1** | < 0.005 |
-| D | L16 -> L31 | 0.159 | -0.00006 | 0.00148 | 107.4 | < 0.005 |
-| E | L16 -> L18 | 0.173 | -0.00012 | 0.00151 | 114.6 | < 0.005 |
+| Eval | Test | Observed | Null 95th | Obs/Null ratio | z-score | p |
+|------|------|----------|-----------|----------------|---------|---|
+| A | Max | 0.208 | 0.001 | 202x | 567 | < 0.002 |
+| A | Mean | 0.053 | 0.0003 | 168x | 314 | < 0.002 |
+| B | Max | 0.222 | 0.001 | 210x | 734 | < 0.002 |
+| B | Mean | 0.112 | 0.0004 | 284x | 525 | < 0.002 |
+| C | Max | **0.914** | 0.001 | **865x** | **3247** | < 0.002 |
+| C | Mean | **0.605** | 0.0003 | **1835x** | **3186** | < 0.002 |
+| D | Max | 0.181 | 0.001 | 172x | 630 | < 0.002 |
+| D | Mean | 0.052 | 0.0003 | 192x | 317 | < 0.002 |
+| E | Max | 0.184 | 0.001 | 156x | 537 | < 0.002 |
+| E | Mean | 0.101 | 0.0004 | 289x | 532 | < 0.002 |
 
-p-values are bounded by the number of permutations: with 200 permutations, the minimum reportable p-value is 1/200 = 0.005. No permuted CKA exceeded the observed value in any test. The null distribution means hover near zero (as expected for shuffled data), with standard deviations around 0.0014. Within-family effect sizes (Cohen's d = 624--687) are 5--6x higher than cross-family (107--150).
+All p-values hit the 0.002 floor (0 of 500 null permutations exceeded the observed value). The **observed/null 95th percentile ratio** (156--1835x) provides a more interpretable effect size than z-scores, which are inflated by the extremely tight null distribution inherent to debiased CKA at n=5000. Z-scores serve primarily as a relative comparison: within-family (z = 3186--3247) shows 5--6x stronger signal than cross-family (z = 314--734).
 
-This confirms the signal is real --- but statistical significance does not imply practical significance.
+**The mean CKA test is critical:** it confirms the *overall* 81-pair similarity structure is real, not an artifact of cherry-picking the best layer pair. Even the average across all 81 pairs is orders of magnitude above the null.
+
+This confirms the signal is real --- but statistical significance does not imply practical significance. The absolute CKA magnitudes for cross-family comparisons remain modest (max 0.18--0.22, mean 0.05--0.11).
 
 ### 3.3 Alignment Quality
 
@@ -258,7 +263,7 @@ This experiment tests whether the optimality of low rank reflects genuine low-di
 | Ridge (full) | 1.424 +/- 0.005 | — |
 
 ![Rank Ablation](outputs/plots/rank_ablation_zoomed.png)
-*Figure 5: Rank-vs-sample-size ablation. Left: at n=5000 and n=8000, rank 4--8 is optimal. Right: at small sample sizes, even rank 4 overfits. The optimal rank does NOT increase with n, ruling out regularization artifacts.*
+*Figure 5: Rank-vs-sample-size ablation. Lower ranks generalize better due to the bias-variance tradeoff — full-rank methods have millions of parameters and overfit with only 5000--8000 training samples.*
 
 **Interpretation:** Low-rank methods consistently outperform full-rank methods on held-out data. This is a **bias-variance tradeoff**: with 5000--8000 training samples and d = 1536--3072, full-rank ridge regression has millions of free parameters (d_source x d_target) and overfits massively. Low-rank methods constrain the parameter count, reducing variance at the cost of slightly higher bias.
 
@@ -280,30 +285,39 @@ To test whether alignment preserves *functional* task signal (beyond geometric s
 
 Within-family ridge alignment retains **93%** of oracle accuracy. Cross-family alignment retains essentially **0%**. The 32k-class prediction task is too demanding for the weak cross-model signal.
 
-### 3.6 Binary Probe Transfer (The Sensitivity Test)
+### 3.6 Binary Probe Transfer: Frozen General vs Task-Specific Alignment
 
-Binary classification is a much more forgiving test: even a weak directional signal can push accuracy above the 50% chance baseline. We tested three binary tasks across both model pairs:
+Our initial binary probe experiment (v1) used alignment learned on task-specific data — the same train split used for the probe. Critic review identified a flaw: transfer accuracy on SST-2 (63.2%) exceeded the source probe's own accuracy (58.0%), which is logically impossible for a faithful alignment mapping. The alignment was learning task-specific features, not testing whether general cross-model structure carries task signal.
 
-![Binary Probe Transfer](outputs/binary_probe_transfer/binary_probe_results.png)
-*Figure 7: Binary probe transfer across 3 tasks x 2 model pairs x 10 alignment ranks. Cross-architecture transfer (left column) beats chance on ALL three tasks. Within-family transfer (right column) approaches native accuracy at high ranks.*
+We corrected this with a **dual-approach design**:
 
-**Results summary:**
+- **Frozen (general):** Load alignment W learned on pile-10k (general text), freeze it, apply to task-specific activations. The probe is trained on the target model. This tests: "does the general representational structure carry task signal?"
+- **Task-specific:** Learn alignment on the task data (same as v1). This tests: "can you build task-specific bridges?"
 
-| Task | Cross-Arch (Gemma->Qwen) | 95% CI | p (t-test) | Cohen's d | Within-Family | Chance |
-|------|--------------------------|--------|------------|-----------|---------------|--------|
-| AG News (sports) | **81.4%** | [76.6%, 86.2%] | 0.0007 | 18.9 | 93.7% | 51.3% |
-| SST-2 (sentiment) | **63.2%** | [58.9%, 67.4%] | 0.005 | 6.8 | 78.6% | 53.7% |
-| ToxiGen (toxicity) | **71.6%** | [66.2%, 77.1%] | 0.011 | 4.8 | 76.1% | 63.0% |
+![Dual Probe Transfer](outputs/dual_probe_transfer/dual_probe_comparison.png)
+*Figure 7: Frozen pile-10k alignment (red) vs task-specific alignment (blue) across 3 tasks x 2 model pairs. Cross-architecture task-specific alignment catastrophically overfits (at or below chance), while frozen alignment preserves signal for AG News.*
 
-*95% confidence intervals and p-values from one-sample t-test (3 seeds, 2 df) against the majority-class baseline. Binomial tests on individual predictions give p < 1e-9 for all three tasks.*
+**Corrected results (frozen general alignment):**
 
-**Statistical significance.** All three cross-architecture results are statistically significant despite the conservative t-test with only 2 degrees of freedom (3 random seeds). The 95% confidence intervals do not overlap with the majority-class baseline for any task. Toxicity transfer has the smallest margin (CI lower bound 66.2% vs 63.0% chance, Cohen's d = 4.8) but remains clearly significant.
+| Task | Cross-Arch Frozen | WF Frozen (ridge) | WF Task-Specific | Chance |
+|------|-------------------|---------------------|------------------|--------|
+| AG News (topic) | **71.3%** (p ≈ 0.002) | **97.7%** | 97.3% | 51.3% |
+| ToxiGen (toxicity) | **67.0%** (p ≈ 0.004) | **73.9%** | 80.1% | 63.0% |
+| SST-2 (sentiment) | 55.0% (n.s.) | **73.7%** | 82.8% | 53.7% |
 
-**Key finding:** Cross-architecture alignment *does* preserve coarse semantic signal. The 0% result from next-token prediction was about task granularity (32k classes scatter probability mass across thousands of wrong tokens), not about the alignment being functionally empty.
+*Cross-arch p-values from one-sample t-test (3 seeds, 2 df) against majority baseline. AG News is significant; toxicity is marginal; sentiment is not reliably above chance.*
 
-**Task-dependent transfer quality.** AG News topic detection transfers best (81.4%) because topic is a more global/distributed feature than fine-grained sentiment (63.2%). This suggests the shared structure encodes coarse document-level semantics more strongly than fine-grained features.
+**Key findings:**
 
-**Rank scaling differs from geometric alignment.** For binary probes, best cross-arch transfer occurs at high ranks (128--256), unlike geometric alignment loss where low ranks generalize best. Binary classification is more forgiving of overfitting because it only needs features to be directionally correct, not metrically precise.
+1. **General (frozen) alignment carries cross-arch signal for topic classification.** AG News at 71.3% is +20pp above chance (p ≈ 0.002) — this is the strongest claim: the general representational structure learned on generic text encodes enough topic information to transfer across architectures.
+
+2. **Task-specific alignment catastrophically overfits cross-architecture.** On all three tasks, task-specific cross-arch transfer is at or below chance (~50%). The general alignment is strictly better because it doesn't overfit to the small task-specific training set.
+
+3. **Sentiment does not reliably transfer cross-architecture.** The frozen cross-arch result (55.0%) is only +1.3pp above chance (53.7%), which is not statistically significant with 3 seeds.
+
+4. **Within-family frozen alignment approaches native accuracy** at high rank — 97.7% on AG News at ridge — confirming that within-family models share rich, high-dimensional representational structure that survives alignment.
+
+5. **The v1 SST-2 paradox is resolved.** The corrected frozen transfer (55.0%) is now *below* source accuracy (58.0%), as expected for a lossy mapping. The v1 paradox (transfer > source) was caused by the task-specific alignment learning sentiment-correlated features.
 
 ## 4. Discussion
 
@@ -342,7 +356,7 @@ This suggests that architecturally distinct models share coarse document-level s
 Compared to the two concurrent papers on cross-model transfer:
 
 1. **Neither paper measures CKA before transfer.** We show that CKA provides essential context: cross-family similarity is 4--9x weaker than within-family, which predicts transfer difficulty.
-2. **Neither paper performs rank analysis.** Both use full-rank mappings, but we show full-rank *hurts* --- it overfits massively. The optimal alignment is low-rank (4--8 dimensions).
+2. **Neither paper tests frozen vs task-specific alignment.** We show that task-specific cross-arch alignment catastrophically overfits while frozen general alignment preserves signal.
 3. **Paper 2 is within-family only.** Our within-family control (Eval C) matches their regime and shows high CKA (~0.9), but our cross-family experiments reveal the much harder case they don't test.
 
 ### 4.5 Limitations
@@ -361,19 +375,17 @@ Compared to the two concurrent papers on cross-model transfer:
 
 2. CKA does not increase with model scale: 3B cross-family pairs (max CKA = 0.181) show similar or lower similarity than 1B pairs (max CKA = 0.208).
 
-3. All CKA scores are highly significant under permutation calibration (p < 0.005, Cohen's d = 100--150), confirming the signal is real despite being weak. This aligns with the Aristotelian critique that statistical significance and practical significance are distinct.
+3. Both max and mean CKA across all 81 layer pairs are statistically significant under permutation calibration (p < 0.002, 500 permutations). Observed CKA exceeds the null 95th percentile by 156--1835x. Z-scores range from 314 (cross-family mean) to 3247 (within-family max), with the within-family control showing 5--6x stronger signal. This aligns with the Aristotelian critique that statistical significance and practical significance are distinct.
 
-4. **Full-rank alignment methods overfit severely** due to the bias-variance tradeoff. With d = 1536--3072 and n = 8000, ridge regression has millions of free parameters and achieves test loss of 1.13 (worse than mean prediction) despite train loss of 0.75. Low-rank methods generalize better (test loss 0.98) by constraining parameter count.
+4. The within-family positive control (Eval C: Llama-1B vs Llama-3B, CKA = 0.91) validates our methodology and shows that representational convergence does occur within architecture families.
 
-5. The best alignment mapping explains only ~4.7% of target variance, far too low for direct cross-model tool transfer at full resolution.
+5. **Frozen general alignment carries cross-architecture signal for topic classification.** Using pile-10k alignment (frozen, not task-specific), AG News cross-arch transfer achieves 71.3% (+20pp above chance, p ≈ 0.002). Toxicity achieves 67.0% (+4pp, marginal). Sentiment at 55.0% is not reliably above chance.
 
-7. The within-family positive control (Eval C: Llama-1B vs Llama-3B, CKA = 0.91) validates our methodology and shows that representational convergence does occur within architecture families.
+6. **Task-specific alignment catastrophically overfits cross-architecture** — at or below chance on all three binary tasks. The frozen general alignment is strictly better, demonstrating that the general cross-model structure IS the signal, not task-specific features.
+
+7. Fine-grained prediction (32k-class next-token) fails completely cross-architecture (~0% transfer) but succeeds within-family (93% of native accuracy via ridge alignment).
 
 8. Using debiased CKA (rather than standard CKA as in the original Platonic Representation Hypothesis paper) with Aristotelian-style permutation calibration provides more reliable similarity estimates in the high-dimensional regime where d >> sqrt(n).
-
-9. **Cross-architecture alignment preserves coarse semantic signal** for binary classification: AG News topic (81.4%), ToxiGen toxicity (71.6%), SST-2 sentiment (63.2%) --- all well above chance. The 32k-class next-token prediction failure was about task granularity, not absence of functional signal.
-
-10. **Task-dependent transfer quality:** Topic detection transfers best cross-architecture, suggesting the shared subspace encodes global document-level semantics more strongly than fine-grained token-level features.
 
 ## 6. Future Work
 
