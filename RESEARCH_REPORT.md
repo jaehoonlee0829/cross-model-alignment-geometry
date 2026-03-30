@@ -4,7 +4,7 @@
 
 We systematically characterize the geometry of shared representations across architecturally distinct language models at the 1--3B parameter scale. Using debiased Centered Kernel Alignment (CKA) with Aristotelian-style permutation calibration, we measure representational similarity between five model pairs spanning four architecture families (Llama, Pythia, Gemma, Qwen). We then learn alignment mappings via Orthogonal Procrustes, ridge regression, LASSO, and low-rank factorization at ranks 4--256, and perform a rank-vs-sample-size ablation to distinguish genuine low-dimensional structure from regularization artifacts.
 
-**Key findings:** (1) Cross-family CKA is consistently weak (max 0.10--0.22) but statistically significant (p < 0.002 for both max and mean CKA across all 81 layer pairs). (2) Within-family CKA (Llama-1B vs Llama-3B) is dramatically higher (max 0.91, mean 0.60), validating our methodology. (3) Frozen general alignment (learned on generic text) carries cross-architecture signal for topic classification (71.3%, +20pp above chance) but not for sentiment. (4) Task-specific cross-architecture alignment catastrophically overfits, performing at or below chance. (5) Fine-grained next-token prediction fails completely cross-architecture but succeeds within-family (93% of native accuracy).
+**Key findings:** (1) Cross-family CKA is consistently weak (max 0.10--0.22) but statistically significant (p < 0.002 for both max and mean CKA across all 81 layer pairs). (2) Within-family CKA (Llama-1B vs Llama-3B) is dramatically higher (max 0.91, mean 0.60), validating our methodology. (3) Frozen general alignment (learned on generic text) carries cross-architecture signal for topic classification (71.3%, +20pp above chance) but not for sentiment. (4) Task-specific cross-architecture alignment suffers from numerical instability in the ALS solver, requiring further methodological work. (5) Fine-grained next-token prediction fails completely cross-architecture but succeeds within-family (93% of native accuracy).
 
 These results bear on the Platonic Representation Hypothesis (Huh et al., 2024), which we do not find supported at this scale for cross-family pairs, and align with the Aristotelian critique (Chun et al., 2026) that raw CKA without null calibration can overstate similarity. We compare our approach to two concurrent works on cross-model transfer (Activation Space Interventions Transfer, 2503.04429; Model Stitching for Linear Features, 2506.06609) and identify key methodological gaps that our rank analysis and CKA calibration address.
 
@@ -311,7 +311,7 @@ We corrected this with a **dual-approach design**:
 
 1. **General (frozen) alignment carries cross-arch signal for topic classification.** AG News at 71.3% is +20pp above chance (p ≈ 0.002) — this is the strongest claim: the general representational structure learned on generic text encodes enough topic information to transfer across architectures.
 
-2. **Task-specific alignment catastrophically overfits cross-architecture.** On all three tasks, task-specific cross-arch transfer is at or below chance (~50%). The general alignment is strictly better because it doesn't overfit to the small task-specific training set.
+2. **Task-specific cross-arch alignment suffers from numerical instability.** On all three tasks, task-specific cross-arch transfer is at or below chance. Diagnostic analysis revealed this is due to W norm explosion in the ALS solver (mapped variance ~5000x target variance), not genuine overfitting. The task-specific results should not be interpreted as a scientific finding about alignment quality without fixing the solver (e.g., more iterations, stronger regularization, or gradient-based optimization).
 
 3. **Sentiment does not reliably transfer cross-architecture.** The frozen cross-arch result (55.0%) is only +1.3pp above chance (53.7%), which is not statistically significant with 3 seeds.
 
@@ -381,7 +381,7 @@ Compared to the two concurrent papers on cross-model transfer:
 
 5. **Frozen general alignment carries cross-architecture signal for topic classification.** Using pile-10k alignment (frozen, not task-specific), AG News cross-arch transfer achieves 71.3% (+20pp above chance, p ≈ 0.002). Toxicity achieves 67.0% (+4pp, marginal). Sentiment at 55.0% is not reliably above chance.
 
-6. **Task-specific alignment catastrophically overfits cross-architecture** — at or below chance on all three binary tasks. The frozen general alignment is strictly better, demonstrating that the general cross-model structure IS the signal, not task-specific features.
+6. **Task-specific cross-arch alignment suffers from numerical instability** (ALS W norm explosion), producing chance-level results. This is an implementation artifact, not evidence that task-specific alignment is inherently worse than frozen alignment.
 
 7. Fine-grained prediction (32k-class next-token) fails completely cross-architecture (~0% transfer) but succeeds within-family (93% of native accuracy via ridge alignment).
 
