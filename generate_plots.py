@@ -66,7 +66,7 @@ width = 0.35
 bars1 = ax.bar(x - width/2, max_ckas, width, label='Max CKA', color='#2196F3')
 bars2 = ax.bar(x + width/2, mean_ckas, width, label='Mean CKA', color='#FF9800')
 ax.set_ylabel('CKA Score')
-ax.set_title('CKA Similarity Does NOT Increase with Model Scale')
+ax.set_title('Debiased CKA Across Cross-Family Model Pairs (1-3B Scale)')
 ax.set_xticks(x)
 ax.set_xticklabels(phases, fontsize=9)
 ax.legend()
