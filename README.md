@@ -19,7 +19,7 @@ The **Platonic Representation Hypothesis** (Huh et al., 2024) predicts convergen
 ![CKA Heatmaps](outputs/plots/all_cka_heatmaps.png)
 *Debiased CKA heatmaps across four cross-family evaluations. All values remain below 0.22.*
 
-We use **debiased CKA** — not the standard (biased) CKA used in the original Platonic Representation Hypothesis paper. The debiased HSIC estimator (Song et al., 2012) avoids inflated similarity scores in the high-dimensional regime (d = 1536--3072, n = 5000--10000).
+We use **debiased CKA** — not the standard (biased) CKA used in the original Platonic Representation Hypothesis paper. The debiased HSIC estimator (Song et al., 2012) avoids inflated similarity scores in the high-dimensional regime (d = 1536~3072, n = 5000~10000).
 
 | Eval | Model Pair | Type | Max CKA | Mean CKA |
 |------|-----------|------|---------|----------|
@@ -34,7 +34,7 @@ We use **debiased CKA** — not the standard (biased) CKA used in the original P
 ![Eval C CKA Heatmap](outputs/eval_c/cka/cka_heatmap.png)
 *Llama-1B vs Llama-3B: CKA ranges from 0.18 to 0.91. Layers at matching relative depths align strongly.*
 
-Within-family CKA (max 0.91, mean 0.60) is **4--9x higher** than any cross-family pair, validating that our pipeline detects real similarity when it exists.
+Within-family CKA (max 0.91, mean 0.60) is **4~9x higher** than any cross-family pair, validating that our pipeline detects real similarity when it exists.
 
 ### 3. Permutation tests confirm statistical significance
 
@@ -56,7 +56,7 @@ We test **both** the max-CKA layer pair and the mean CKA across **all 81 layer p
 | E | Max | 0.184 | 0.001 | 156x | < 0.002 |
 | E | Mean | 0.101 | 0.0004 | 289x | < 0.002 |
 
-The observed CKA values exceed the null 95th percentile by **156--1835x**, confirming they reflect genuine representational similarity rather than finite-sample or dimensionality artifacts. All p-values are < 0.002 (0 of 500 null permutations exceeded the observed value in any test).
+The observed CKA values exceed the null 95th percentile by **156~1835x**, confirming they reflect genuine representational similarity rather than finite-sample or dimensionality artifacts. All p-values are < 0.002 (0 of 500 null permutations exceeded the observed value in any test).
 
 **The mean CKA test is critical:** the *average* CKA across all 81 layer pairs is orders of magnitude above the null, confirming the overall similarity structure is real — not an artifact of cherry-picking the best layer pair.
 
@@ -125,12 +125,12 @@ Our initial binary probe experiment (v1) used a bridge learned on task data, whi
 
 ## Conclusions
 
-1. **Cross-family CKA is weak (0.10--0.22) but statistically genuine** — both max and mean CKA across all 81 layer pairs significantly exceed the permutation null (p < 0.002), with observed/null ratios of 156--284x.
-2. **Within-family CKA is 4--9x higher (0.91)**, validating our methodology and showing convergence occurs within architecture families.
+1. **Cross-family CKA is weak (0.10~0.22) but statistically genuine** — both max and mean CKA across all 81 layer pairs significantly exceed the permutation null (p < 0.002), with observed/null ratios of 156~284x.
+2. **Within-family CKA is 4~9x higher (0.91)**, validating our methodology and showing convergence occurs within architecture families.
 3. **General cross-model bridge carries coarse semantic signal** — frozen pile-10k bridge achieves 71% on cross-arch topic classification (+20pp above chance). Sentiment does not reliably transfer.
 4. **Task-specific cross-arch bridge produces chance-level results** because the mapping quality is very poor (~7% explained variance) and 4k task-specific samples provide less diverse training signal than 10k pile-10k samples.
 5. **Fine-grained prediction (32k-class next-token) fails completely** cross-architecture but succeeds within-family (93% of native accuracy).
-6. **The Platonic Representation Hypothesis is not supported at 1--3B scale** for cross-family pairs, but a weaker form holds: models share coarse document-level features (topic, toxicity) regardless of architecture.
+6. **The Platonic Representation Hypothesis is not supported at 1~3B scale** for cross-family pairs, but a weaker form holds: models share coarse document-level features (topic, toxicity) regardless of architecture.
 
 ---
 
