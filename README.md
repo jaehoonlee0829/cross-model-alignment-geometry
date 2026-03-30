@@ -43,22 +43,22 @@ Within-family CKA (max 0.91, mean 0.60) is **4--9x higher** than any cross-famil
 
 We test **both** the max-CKA layer pair and the mean CKA across **all 81 layer pairs** to rule out cherry-picking. For each of 500 permutations, we shuffle sample indices (breaking input correspondence between models), compute the full 9x9 CKA matrix, and record the max and mean.
 
-| Eval | Type | Observed | Null 95th | Obs/Null ratio | z-score | p |
-|------|------|----------|-----------|----------------|---------|---|
-| A | Max | 0.208 | 0.001 | 202x | 567 | < 0.002 |
-| A | Mean | 0.053 | 0.0003 | 168x | 314 | < 0.002 |
-| B | Max | 0.222 | 0.001 | 210x | 734 | < 0.002 |
-| B | Mean | 0.112 | 0.0004 | 284x | 525 | < 0.002 |
-| C | Max | **0.914** | 0.001 | **865x** | **3247** | < 0.002 |
-| C | Mean | **0.605** | 0.0003 | **1835x** | **3186** | < 0.002 |
-| D | Max | 0.181 | 0.001 | 172x | 630 | < 0.002 |
-| D | Mean | 0.052 | 0.0003 | 192x | 317 | < 0.002 |
-| E | Max | 0.184 | 0.001 | 156x | 537 | < 0.002 |
-| E | Mean | 0.101 | 0.0004 | 289x | 532 | < 0.002 |
+| Eval | Type | Observed CKA | Null 95th | Obs/Null ratio | p |
+|------|------|-------------|-----------|----------------|---|
+| A | Max | 0.208 | 0.001 | 202x | < 0.002 |
+| A | Mean | 0.053 | 0.0003 | 168x | < 0.002 |
+| B | Max | 0.222 | 0.001 | 210x | < 0.002 |
+| B | Mean | 0.112 | 0.0004 | 284x | < 0.002 |
+| C | Max | **0.914** | 0.001 | **865x** | < 0.002 |
+| C | Mean | **0.605** | 0.0003 | **1835x** | < 0.002 |
+| D | Max | 0.181 | 0.001 | 172x | < 0.002 |
+| D | Mean | 0.052 | 0.0003 | 192x | < 0.002 |
+| E | Max | 0.184 | 0.001 | 156x | < 0.002 |
+| E | Mean | 0.101 | 0.0004 | 289x | < 0.002 |
 
-The observed CKA values exceed the null 95th percentile by **156--1835x**, confirming they reflect genuine representational similarity rather than finite-sample or dimensionality artifacts. Z-scores (observed - null_mean / null_std) range from 314 to 3247; the within-family control (z = 3247) shows 5--6x stronger signal than cross-family pairs (z = 314--734).
+The observed CKA values exceed the null 95th percentile by **156--1835x**, confirming they reflect genuine representational similarity rather than finite-sample or dimensionality artifacts. All p-values are < 0.002 (0 of 500 null permutations exceeded the observed value in any test).
 
-**Note:** All p-values hit the 0.002 floor (0 of 500 null permutations exceeded the observed value). The z-scores, while inflated by the extremely tight null distribution, serve as a relative comparison metric across evals. The null is tight because with n=5000 and debiased CKA, permuted (independent) data produces CKA values very close to zero.
+**The mean CKA test is critical:** the *average* CKA across all 81 layer pairs is orders of magnitude above the null, confirming the overall similarity structure is real — not an artifact of cherry-picking the best layer pair.
 
 ### 4. Next-token prediction probe transfer
 
