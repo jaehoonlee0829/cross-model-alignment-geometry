@@ -98,7 +98,7 @@ An initial experiment using task-specific alignment showed cross-arch transfer b
 - **Sentiment does not reliably transfer cross-architecture** — 55.0% vs 53.7% chance is not statistically significant.
 - **Within-family frozen alignment approaches native accuracy** at high rank (97.7% AG News at ridge).
 
-*Note: Task-specific cross-arch alignment performed at chance level, but diagnostic analysis revealed this is due to numerical instability in the ALS solver (W norm explosion), not a genuine finding about alignment quality. The task-specific results should not be compared directly to frozen results without fixing the solver.*
+*Note: Task-specific cross-arch alignment performed at chance level. The alignment quality is extremely poor (test loss ~0.96--1.0, explaining <7% of target variance), so mapped activations cluster near the target mean, yielding chance-level probe accuracy. The frozen alignment also has poor reconstruction quality, but captures marginally more shared structure due to training on 10k diverse samples (vs 4k task-specific samples), which is enough to preserve coarse topic signal.*
 
 ---
 
@@ -128,7 +128,7 @@ Our initial binary probe experiment (v1) used alignment learned on task data, wh
 1. **Cross-family CKA is weak (0.10--0.22) but statistically genuine** — both max and mean CKA across all 81 layer pairs significantly exceed the permutation null (p < 0.002), with observed/null ratios of 156--284x.
 2. **Within-family CKA is 4--9x higher (0.91)**, validating our methodology and showing convergence occurs within architecture families.
 3. **General cross-model alignment carries coarse semantic signal** — frozen pile-10k alignment achieves 71% on cross-arch topic classification (+20pp above chance). Sentiment does not reliably transfer.
-4. **Task-specific cross-arch alignment suffers from numerical instability** in the ALS solver (W norm explosion), producing chance-level results. This is an implementation issue, not a scientific finding about alignment quality.
+4. **Task-specific cross-arch alignment produces chance-level results** because the mapping quality is very poor (~7% explained variance) and 4k task-specific samples provide less diverse training signal than 10k pile-10k samples.
 5. **Fine-grained prediction (32k-class next-token) fails completely** cross-architecture but succeeds within-family (93% of native accuracy).
 6. **The Platonic Representation Hypothesis is not supported at 1--3B scale** for cross-family pairs, but a weaker form holds: models share coarse document-level features (topic, toxicity) regardless of architecture.
 
