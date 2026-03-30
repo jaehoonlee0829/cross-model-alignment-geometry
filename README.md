@@ -94,11 +94,11 @@ An initial experiment using task-specific alignment showed cross-arch transfer b
 | SST-2 (sentiment) | 55.0% (not significant) | **73.7%** | 53.7% |
 
 **Key findings:**
-- **General (frozen) alignment carries cross-arch signal for topic classification** — AG News at 71.3% is +20pp above chance (p ≈ 0.002, 3 seeds).
+- **General (frozen) bridge carries cross-arch signal for topic classification** — AG News at 71.3% is +20pp above chance (p ≈ 0.002, 3 seeds).
 - **Sentiment does not reliably transfer cross-architecture** — 55.0% vs 53.7% chance is not statistically significant.
-- **Within-family frozen alignment approaches native accuracy** at high rank (97.7% AG News at ridge).
+- **Within-family frozen bridge approaches native accuracy** at high rank (97.7% AG News at ridge).
 
-*Note: Task-specific cross-arch alignment performed at chance level. The alignment quality is extremely poor (test loss ~0.96--1.0, explaining <7% of target variance), so mapped activations cluster near the target mean, yielding chance-level probe accuracy. The frozen alignment also has poor reconstruction quality, but captures marginally more shared structure due to training on 10k diverse samples (vs 4k task-specific samples), which is enough to preserve coarse topic signal.*
+*Note: Task-specific cross-arch bridge performed at chance level. The mapping quality is extremely poor (test loss ~0.96--1.0, explaining <7% of target variance), so mapped activations cluster near the target mean, yielding chance-level probe accuracy. The frozen bridge captures marginally more shared structure due to training on 10k diverse samples (vs 4k task-specific samples), which is enough to preserve coarse topic signal.*
 
 ---
 
@@ -110,15 +110,15 @@ Standard CKA can overstate similarity in high-dimensional settings (Chun et al.,
 
 ### Dual-Approach Probe Transfer
 
-Our initial binary probe experiment (v1) used alignment learned on task data, which allowed the alignment to overfit to task-relevant features. Evidence: transfer accuracy exceeded source probe accuracy on SST-2 (63% vs 58%), which is logically impossible for a faithful mapping. The corrected design (v2) uses **frozen pile-10k alignment** applied to task activations, properly testing whether the general cross-model structure carries task signal.
+Our initial binary probe experiment (v1) used a bridge learned on task data, which allowed the bridge to overfit to task-relevant features. Evidence: transfer accuracy exceeded source probe accuracy on SST-2 (63% vs 58%), which is logically impossible for a faithful mapping. The corrected design (v2) uses a **frozen pile-10k bridge** applied to task activations, properly testing whether the general cross-model structure carries task signal.
 
-### Alignment Methods
+### Bridge Methods
 
 | Method | Description |
 |--------|-------------|
 | Orthogonal Procrustes | SVD-based rotation (matched dims only) |
 | Ridge Regression | Full-rank linear projection with L2 |
-| LASSO | Sparse alignment with L1 |
+| LASSO | Sparse bridge with L1 |
 | Low-Rank | W = AB factorization at ranks {4, 8, 16, 32, 64, 128, 256} |
 
 ---
@@ -127,8 +127,8 @@ Our initial binary probe experiment (v1) used alignment learned on task data, wh
 
 1. **Cross-family CKA is weak (0.10--0.22) but statistically genuine** — both max and mean CKA across all 81 layer pairs significantly exceed the permutation null (p < 0.002), with observed/null ratios of 156--284x.
 2. **Within-family CKA is 4--9x higher (0.91)**, validating our methodology and showing convergence occurs within architecture families.
-3. **General cross-model alignment carries coarse semantic signal** — frozen pile-10k alignment achieves 71% on cross-arch topic classification (+20pp above chance). Sentiment does not reliably transfer.
-4. **Task-specific cross-arch alignment produces chance-level results** because the mapping quality is very poor (~7% explained variance) and 4k task-specific samples provide less diverse training signal than 10k pile-10k samples.
+3. **General cross-model bridge carries coarse semantic signal** — frozen pile-10k bridge achieves 71% on cross-arch topic classification (+20pp above chance). Sentiment does not reliably transfer.
+4. **Task-specific cross-arch bridge produces chance-level results** because the mapping quality is very poor (~7% explained variance) and 4k task-specific samples provide less diverse training signal than 10k pile-10k samples.
 5. **Fine-grained prediction (32k-class next-token) fails completely** cross-architecture but succeeds within-family (93% of native accuracy).
 6. **The Platonic Representation Hypothesis is not supported at 1--3B scale** for cross-family pairs, but a weaker form holds: models share coarse document-level features (topic, toxicity) regardless of architecture.
 
