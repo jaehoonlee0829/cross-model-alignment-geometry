@@ -60,22 +60,7 @@ The observed CKA values exceed the null 95th percentile by **156--1835x**, confi
 
 **The mean CKA test is critical:** the *average* CKA across all 81 layer pairs is orders of magnitude above the null, confirming the overall similarity structure is real — not an artifact of cherry-picking the best layer pair.
 
-### 4. Next-token prediction probe transfer
-
-We train a logistic regression probe on Model A's activations to predict next tokens (top-500 most frequent, covering ~55% of data), then transfer via alignment to Model B.
-
-![Probe Transfer Comparison](outputs/plots/probe_transfer_comparison.png)
-*Left: within-family transfer retains up to 93% of oracle accuracy. Right: cross-family transfer achieves ~0%.*
-
-| | Cross-Family (Eval B) | Within-Family (Eval C) |
-|---|---|---|
-| Model A baseline | 72.5% | 63.9% |
-| Ridge transfer | 0.2% | **92.9%** |
-| Model B oracle | 77.8% | 63.4% |
-
-Within-family ridge alignment retains **93%** of oracle accuracy. Cross-family retains ~0%. The 32k-class task is too demanding for the weak cross-model signal.
-
-### 5. Binary probe transfer: frozen general alignment vs task-specific
+### 4. Binary probe transfer: frozen general bridge vs task-specific
 
 An initial experiment using task-specific alignment showed cross-arch transfer beating chance (81% on AG News). However, critic review identified a flaw: the alignment was trained on the same task data as the probe, making it a weaker claim. We corrected this with a **dual-approach design**:
 
@@ -99,6 +84,21 @@ An initial experiment using task-specific alignment showed cross-arch transfer b
 - **Within-family frozen bridge approaches native accuracy** at high rank (97.7% AG News at ridge).
 
 *Note: Task-specific cross-arch bridge performed at chance level. The mapping quality is extremely poor (test loss ~0.96--1.0, explaining <7% of target variance), so mapped activations cluster near the target mean, yielding chance-level probe accuracy. The frozen bridge captures marginally more shared structure due to training on 10k diverse samples (vs 4k task-specific samples), which is enough to preserve coarse topic signal.*
+
+### 5. Next-token prediction probe transfer
+
+We train a logistic regression probe on Model A's activations to predict next tokens (top-500 most frequent, covering ~55% of data), then transfer via bridge to Model B.
+
+![Probe Transfer Comparison](outputs/plots/probe_transfer_comparison.png)
+*Left: within-family transfer retains up to 93% of oracle accuracy. Right: cross-family transfer achieves ~0%.*
+
+| | Cross-Family (Eval B) | Within-Family (Eval C) |
+|---|---|---|
+| Model A baseline | 72.5% | 63.9% |
+| Ridge transfer | 0.2% | **92.9%** |
+| Model B oracle | 77.8% | 63.4% |
+
+Within-family ridge bridge retains **93%** of oracle accuracy. Cross-family retains ~0%. The 32k-class task is too demanding for the weak cross-model signal.
 
 ---
 
