@@ -1,6 +1,6 @@
-# Cross-Model Alignment at 1--3B Scale
+# The Geometry of Cross-Model Representation Bridging
 
-**Do independently trained language models converge to shared representations? If so, what transfers — and what doesn't?**
+> **A note on terminology:** In this project we use **"bridge"** (or "mapping") to refer to learned linear transformations between two models' activation spaces. This is unrelated to "AI alignment" in the safety sense. The codebase internally uses `alignment` in variable/function names following the convention in the representation learning literature (Procrustes alignment, CKA alignment, etc.), but all user-facing text uses "bridge" to avoid confusion.
 
 ## Motivation
 
@@ -8,7 +8,7 @@ Recent work on cross-model transfer — steering vectors (2503.04429), model sti
 
 The **Platonic Representation Hypothesis** (Huh et al., 2024) predicts convergence to shared representations regardless of architecture. The **Aristotelian critique** (Chun et al., 2026) argues that standard CKA overstates this convergence due to dimensionality inflation, and advocates for permutation-calibrated measurements.
 
-We measure representational similarity (debiased CKA with permutation calibration), test whether alignment carries functional task signal (probe transfer), and compare cross-architecture vs within-family pairs.
+**Our contribution** is to characterize the *geometry* of cross-model representation bridging: we measure how similar representations are (debiased CKA with permutation calibration), learn bridge mappings at multiple ranks, and test whether the bridge carries functional task signal via probe transfer. We test both cross-architecture pairs (Gemma vs Qwen, Llama vs Pythia) and a within-family positive control (Llama-1B vs Llama-3B).
 
 ---
 
