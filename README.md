@@ -87,26 +87,22 @@ An initial experiment using task-specific alignment showed cross-arch transfer b
 
 ### 5. Next-token prediction probe transfer
 
-We train a logistic regression probe on Model A's activations to predict next tokens (top-500 most frequent, covering ~55% of data), then transfer via bridge to Model B.
+We train a logistic regression probe on Model A's activations to predict next tokens, then transfer via bridge to Model B. Cross-architecture pairs use different tokenizers, so we build a cross-tokenizer vocabulary mapping (83,499 shared tokens via exact string match after stripping SentencePiece/tiktoken prefixes) and relabel to the top-500 most frequent shared classes. Within-family pairs (Llama) share a tokenizer, so no remapping is needed.
+
+#### Within-family (Llama-1B → Llama-3B) — shared tokenizer
 
 ![Probe Transfer Comparison](outputs/plots/probe_transfer_comparison.png)
 *Left: within-family transfer retains up to 93% of oracle accuracy. Right: cross-family transfer achieves ~0%.*
 
-| | Cross-Family (Eval B) | Within-Family (Eval C) |
-|---|---|---|
-| Model A baseline | 72.5% | 63.9% |
-| Ridge transfer | 0.2% | **92.9%** |
-| Model B oracle | 77.8% | 63.4% |
+| Method | Top-1 |
+|--------|-------|
+| Source native (Llama-1B) | 63.9% |
+| Ridge transfer | **92.9%** |
+| Target oracle (Llama-3B) | 63.4% |
 
-Within-family ridge bridge retains **93%** of oracle accuracy. Cross-family retains ~0%. The 32k-class task is too demanding for the weak cross-model signal.
+Within-family ridge bridge retains **93%** of oracle accuracy. The bridge faithfully preserves fine-grained token-level predictions within the same architecture family.
 
-### 6. Cross-tokenizer fix: matched-token NTP and POS probe transfer
-
-The original NTP experiment (Section 5) had a confound: raw token IDs were treated as shared classes across Gemma and Qwen, but different tokenizers assign different IDs to different tokens. We fixed this with two approaches:
-
-#### 6a. Matched-token NTP (Experiment A)
-
-Built a cross-tokenizer vocabulary mapping (83,499 shared tokens via exact string match after normalization), relabeled to top-500 shared classes, and re-ran probe transfer.
+#### Cross-architecture (Gemma-2B → Qwen-1.5B) — matched-token vocabulary
 
 | Method | Top-1 | Top-5 |
 |--------|-------|-------|
@@ -116,11 +112,11 @@ Built a cross-tokenizer vocabulary mapping (83,499 shared tokens via exact strin
 | Best low-rank (r128/r256) | 4.6% | 15.9% |
 | Ridge (full) | 4.9% | 18.0% |
 
-**Key finding:** The cross-model oracle is only 10.3% — Gemma and Qwen fundamentally disagree on next-token predictions ~90% of the time. The bridge captures roughly half of what agreement exists. Even after fixing the tokenizer confound, cross-arch NTP transfer is near-zero.
+The cross-model oracle is only 10.3% — Gemma and Qwen fundamentally disagree on next-token predictions ~90% of the time, even when evaluated on a shared vocabulary. The bridge captures roughly half of this limited agreement (4.9% vs 10.3% ceiling). Fine-grained token-level prediction does not transfer across architectures.
 
-#### 6b. POS tag prediction (Experiment B)
+### 6. POS tag probe transfer (tokenizer-independent)
 
-Used spaCy POS tags (17 classes) as a tokenizer-independent label set. POS tags are derived from the raw text, not from model tokenizers.
+To test whether the bridge preserves coarser linguistic structure, we use spaCy Universal POS tags (17 classes) as a tokenizer-independent label set. POS tags are derived from the raw text, not from model tokenizers.
 
 | Pair | Method | Top-1 | Transfer Ratio |
 |------|--------|-------|----------------|
@@ -136,19 +132,19 @@ Used spaCy POS tags (17 classes) as a tokenizer-independent label set. POS tags 
 
 **Key findings:**
 - POS transfer works cross-arch at ~79% of oracle (low-rank r4). The bridge preserves grammatical category information across architectures.
-- Within-family Llama transfer exceeds oracle at r128, confirming the method works.
+- Within-family Llama transfer is near-perfect. The >100% transfer ratio is an artifact of evaluating oracle and transfer on slightly different valid-sample subsets (different tokenizers produce different valid masks).
 - **Complexity gradient:** Binary (~70%) → POS 17-class (~79%) → NTP 500-class (~6%). Coarse linguistic structure transfers; fine-grained token identity does not.
 
-#### 6c. Critic analysis and limitations
+### 7. Critic analysis and limitations (Sections 5--6)
 
 Three independent critic reviews identified the following limitations:
 
-1. **No error bars.** All results are single-seed point estimates. The r4-vs-r8 POS differences (~1pp) are within noise for n≈455 test samples.
+1. **No error bars.** All probing results are single-seed point estimates. The r4-vs-r8 POS differences (~1pp) are within noise for n≈455 test samples.
 2. **Missing baselines.** No majority-class baseline reported for POS (NOUN at ~20% would give ~20% accuracy). No random-bridge or shuffled-label controls (Hewitt & Liang, 2019).
 3. **POS label confound.** Different tokenizers truncate at different character positions, so POS labels for the same text may refer to different words across models. The Gemma/Qwen cross-model oracle (21.2%) vs Llama (48.5%) likely reflects this tokenizer-induced label disagreement.
-4. **Cross-model oracle for NTP conflates tokenizer and representation.** The 10.3% ceiling could reflect the ~10% of positions where tokenizers happen to agree on boundaries, not a ceiling on representational alignment.
+4. **Cross-model oracle for NTP conflates tokenizer and representation.** The 10.3% ceiling could partly reflect tokenizer boundary agreement rate rather than a pure representational ceiling.
 5. **Complexity gradient is confounded.** Different sample sizes, class counts, and samples-per-class (binary: ~2000, POS: ~470, NTP: ~16) make cross-task comparison unreliable.
-6. **Low-rank advantage is regularization.** With d=2304 and ~1700 POS training samples, ridge has 3.5M parameters — it overfits. The r4 "advantage" reflects regularization, not low-dimensional shared structure.
+6. **Low-rank advantage is regularization.** With d=2304 and ~1700 POS training samples, ridge has 3.5M parameters — it overfits. The r4 "advantage" reflects regularization, not evidence of a low-dimensional shared POS subspace. This is consistent with the rank-vs-sample-size ablation (Section 3.4 of the research report).
 
 **Proposed follow-ups:** (1) Filter NTP test set to positions where both tokenizers produce identical boundaries. (2) Report majority-class and shallow-feature baselines (token length + position). (3) Match samples-per-class across task granularities for fair complexity comparison.
 
@@ -181,8 +177,8 @@ Our initial binary probe experiment (v1) used a bridge learned on task data, whi
 2. **Within-family CKA is 4~9x higher (0.91)**, validating our methodology and showing convergence occurs within architecture families.
 3. **General cross-model bridge carries coarse semantic signal** — frozen pile-10k bridge achieves 71% on cross-arch topic classification (+20pp above chance). Sentiment does not reliably transfer.
 4. **Task-specific cross-arch bridge produces chance-level results** because the mapping quality is very poor (~7% explained variance) and 4k task-specific samples provide less diverse training signal than 10k pile-10k samples.
-5. **Fine-grained prediction (32k-class next-token) fails completely** cross-architecture but succeeds within-family (93% of native accuracy). This holds even after fixing the tokenizer confound with matched vocabulary labels (Section 6a).
-6. **POS tag transfer works cross-architecture** at 79% of oracle accuracy (Section 6b), establishing that the bridge preserves grammatical category information despite failing on fine-grained token identity.
+5. **Fine-grained prediction (500-class next-token) fails completely** cross-architecture but succeeds within-family (93% of native accuracy). After fixing the tokenizer confound with a matched vocabulary mapping, cross-arch transfer reaches only 4.9% top-1 against a cross-model oracle ceiling of 10.3% (Section 5).
+6. **POS tag transfer works cross-architecture** at 79% of oracle accuracy (Section 6), establishing that the bridge preserves grammatical category information despite failing on fine-grained token identity.
 7. **Complexity gradient:** Binary (~70%) → POS 17-class (~79%) → NTP 500-class (~6%). Cross-arch bridges carry coarse linguistic structure but not fine-grained predictions.
 8. **The Platonic Representation Hypothesis is not supported at 1~3B scale** for cross-family pairs, but a weaker form holds: models share coarse document-level and grammatical features regardless of architecture.
 
