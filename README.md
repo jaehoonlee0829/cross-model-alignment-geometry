@@ -62,7 +62,7 @@ The observed CKA values exceed the null 95th percentile by **156~1835x**, confir
 
 ### 4. Binary probe transfer: frozen general bridge vs task-specific
 
-An initial experiment using task-specific alignment showed cross-arch transfer beating chance (81% on AG News). However, critic review identified a flaw: the alignment was trained on the same task data as the probe, making it a weaker claim. We corrected this with a **dual-approach design**:
+An initial experiment using task-specific alignment showed cross-arch transfer beating chance (81% on AG News). However, review identified a flaw: the alignment was trained on the same task data as the probe, making it a weaker claim. We corrected this with a **dual-approach design**:
 
 - **Frozen (general):** Load alignment learned on pile-10k (general text), freeze it, apply to task activations. Tests: "does the general cross-model structure carry task signal?"
 - **Task-specific:** Learn alignment on task data (same as v1). Tests: "can you build task-specific bridges?"
@@ -135,9 +135,9 @@ To test whether the bridge preserves coarser linguistic structure, we use spaCy 
 - Within-family Llama transfer is near-perfect. The >100% transfer ratio is an artifact of evaluating oracle and transfer on slightly different valid-sample subsets (different tokenizers produce different valid masks).
 - **Complexity gradient:** Binary (~70%) → POS 17-class (~79%) → NTP 500-class (~6%). Coarse linguistic structure transfers; fine-grained token identity does not.
 
-### 7. Critic analysis and limitations (Sections 5--6)
+### 7. Limitations (Sections 5--6)
 
-Three independent critic reviews identified the following limitations:
+The following limitations apply to the probe transfer experiments:
 
 1. **No error bars.** All probing results are single-seed point estimates. The r4-vs-r8 POS differences (~1pp) are within noise for n≈455 test samples.
 2. **Missing baselines.** No majority-class baseline reported for POS (NOUN at ~20% would give ~20% accuracy). No random-bridge or shuffled-label controls (Hewitt & Liang, 2019).

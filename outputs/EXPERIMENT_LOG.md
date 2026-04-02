@@ -132,7 +132,7 @@ Used spaCy Universal POS tags (17 classes) as tokenizer-independent labels.
 Binary (~70%) → POS 17-class (~79%) → NTP 500-class (~6%)
 Coarse linguistic structure transfers cross-arch; fine-grained token identity does not.
 
-### Critic Analysis (3 independent reviews)
+### Limitations
 
 **Statistical:** No error bars, single-seed estimates. POS differences between ranks within noise.
 **Design:** Missing majority-class baseline (~20%), no random-bridge or shuffled-label controls.

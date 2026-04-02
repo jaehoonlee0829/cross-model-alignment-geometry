@@ -306,7 +306,7 @@ The cross-model oracle (10.3%) reveals that Gemma and Qwen disagree on next-toke
 
 ### 3.6 Binary Probe Transfer: Frozen General vs Task-Specific Alignment
 
-Our initial binary probe experiment (v1) used alignment learned on task-specific data — the same train split used for the probe. Critic review identified a flaw: transfer accuracy on SST-2 (63.2%) exceeded the source probe's own accuracy (58.0%), which is logically impossible for a faithful alignment mapping. The alignment was learning task-specific features, not testing whether general cross-model structure carries task signal.
+Our initial binary probe experiment (v1) used alignment learned on task-specific data — the same train split used for the probe. Review identified a flaw: transfer accuracy on SST-2 (63.2%) exceeded the source probe's own accuracy (58.0%), which is logically impossible for a faithful alignment mapping. The alignment was learning task-specific features, not testing whether general cross-model structure carries task signal.
 
 We corrected this with a **dual-approach design**:
 
@@ -368,9 +368,9 @@ Cross-arch POS transfer achieves 79% of oracle at rank 4, demonstrating that the
 
 The results establish a **complexity gradient** for cross-arch transfer: binary classification (~70% of oracle) → POS tagging (79%) → NTP (6%). Coarse linguistic structure transfers across architectures; fine-grained token identity does not.
 
-### 3.8 Critic Analysis and Limitations of Sections 3.5 and 3.7
+### 3.8 Limitations of Probe Transfer Experiments (Sections 3.5 and 3.7)
 
-Three independent critic reviews identified important limitations:
+The following limitations apply to the probe transfer experiments:
 
 **Statistical concerns.** All results are single-seed point estimates with no confidence intervals or bootstrap. With n≈455 POS test samples and 17 classes, accuracy differences of 1--2pp between rank conditions are within noise. The >100% transfer ratio for Llama r128 (49.3% vs 48.5% oracle) likely reflects different valid-sample masks rather than genuine super-oracle performance.
 
