@@ -92,7 +92,7 @@ We train a logistic regression probe on Model A's activations to predict next to
 #### Within-family (Llama-1B → Llama-3B) — shared tokenizer
 
 ![Probe Transfer Comparison](outputs/plots/probe_transfer_comparison.png)
-*Left: within-family transfer retains up to 93% of oracle accuracy. Right: cross-family transfer achieves ~0%.*
+*Left: within-family transfer scales with rank, reaching 93% of oracle at ridge. Right: cross-arch transfer with matched-token vocabulary reaches ~5% top-1, roughly half the cross-model oracle ceiling (10.3%) — the models fundamentally disagree on next-token predictions.*
 
 | Method | Top-1 |
 |--------|-------|

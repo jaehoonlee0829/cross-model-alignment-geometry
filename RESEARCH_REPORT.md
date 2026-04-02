@@ -278,7 +278,7 @@ To test whether alignment preserves *functional* task signal (beyond geometric s
 Since Llama-1B and Llama-3B share a tokenizer, raw token IDs are directly comparable. Top-500 most frequent tokens, covering ~55% of data.
 
 ![Probe Transfer Comparison](outputs/plots/probe_transfer_comparison.png)
-*Figure 6: Next-token prediction probe transfer. Left: within-family (Llama-1B -> Llama-3B) retains up to 93% of oracle accuracy via ridge alignment. Right: cross-family (Gemma -> Qwen) achieves ~0% transfer.*
+*Figure 6: Next-token prediction probe transfer. Left: within-family (Llama-1B -> Llama-3B) scales with rank, reaching 93% of oracle at ridge. Right: cross-architecture (Gemma -> Qwen) with matched-token vocabulary reaches ~5% top-1, roughly half the cross-model oracle ceiling (10.3%).*
 
 | Method | Top-1 |
 |--------|-------|
