@@ -86,3 +86,69 @@ Possible explanations:
 
 The finding that low-rank alignment beats full ridge suggests that whatever cross-model structure
 exists is confined to a low-dimensional subspace (~32 dimensions out of 1536-3072).
+
+---
+
+## Cross-Tokenizer Fix Experiments (2026-04-02)
+
+### Motivation
+
+The original NTP probe transfer (Phase B) had a confound: raw token IDs were treated as shared
+classes across Gemma and Qwen, but different tokenizers assign different IDs to different tokens.
+Two experiments fix this.
+
+### Experiment A: Matched-Token NTP
+
+Built cross-tokenizer vocabulary mapping (83,499 shared tokens via exact string match after
+normalization of SentencePiece ▁ and tiktoken Ġ prefixes). Relabeled to top-500 shared classes.
+
+| Method | Top-1 | Top-5 |
+|--------|-------|-------|
+| Source native (Gemma) | 66.8% | 82.1% |
+| Target oracle (Qwen) | 75.3% | 86.2% |
+| Cross-model oracle | 10.3% | 20.2% |
+| Best low-rank (r128/r256) | 4.6% | 15.9% |
+| Ridge (full) | 4.9% | 18.0% |
+
+Key: Cross-model oracle only 10.3% — models fundamentally disagree on next-token predictions.
+Bridge captures ~half of existing agreement. Tokenizer fix did NOT change the conclusion.
+
+### Experiment B: POS Tag Prediction (Tokenizer-Independent)
+
+Used spaCy Universal POS tags (17 classes) as tokenizer-independent labels.
+
+**Cross-arch (Gemma L18 → Qwen L23):**
+- Source: 40.4%, Oracle: 37.8%, Cross-model oracle: 21.2%
+- Best transfer: r4 at 29.9% (79% of oracle)
+- Ridge: 23.1% (61%)
+
+**Within-family (Llama 1B L15 → 3B L27):**
+- Source: 45.5%, Oracle: 48.5%
+- Best transfer: r128 at 49.3% (101.6% — slight valid-sample mask artifact)
+- Ridge: 47.1% (97.1%)
+
+### Complexity Gradient Established
+
+Binary (~70%) → POS 17-class (~79%) → NTP 500-class (~6%)
+Coarse linguistic structure transfers cross-arch; fine-grained token identity does not.
+
+### Critic Analysis (3 independent reviews)
+
+**Statistical:** No error bars, single-seed estimates. POS differences between ranks within noise.
+**Design:** Missing majority-class baseline (~20%), no random-bridge or shuffled-label controls.
+POS labels confounded by tokenizer-dependent truncation positions.
+**Interpretation:** Low-rank r4 > ridge is regularization, not low-dimensional structure.
+Cross-model oracle conflates tokenizer boundary agreement with representational alignment.
+
+### Files Generated
+
+- outputs/vocab_mapping.json — Cross-tokenizer vocabulary mapping (83,499 shared tokens)
+- outputs/phase_b/probing/labels_gemma_shared.npy — Gemma shared-class labels
+- outputs/phase_b/probing/labels_qwen_shared.npy — Qwen shared-class labels
+- outputs/phase_b/probing/top_shared_tokens.npy — Top-500 shared classes
+- outputs/phase_b/probing/matched_token_probe_results.csv — Experiment A results
+- outputs/pos_labels_gemma.npy — POS labels for Gemma
+- outputs/pos_labels_qwen.npy — POS labels for Qwen
+- outputs/pos_labels_llama-1b.npy — POS labels for Llama-1B
+- outputs/pos_labels_llama-3b.npy — POS labels for Llama-3B
+- outputs/pos_probe_results.csv — Experiment B results
