@@ -277,8 +277,8 @@ To test whether alignment preserves *functional* task signal (beyond geometric s
 
 Since Llama-1B and Llama-3B share a tokenizer, raw token IDs are directly comparable. Top-500 most frequent tokens, covering ~55% of data.
 
-![Probe Transfer Comparison](outputs/plots/probe_transfer_comparison.png)
-*Figure 6: Next-token prediction probe transfer. Left: within-family (Llama-1B -> Llama-3B) scales with rank, reaching 93% of oracle at ridge. Right: cross-architecture (Gemma -> Qwen) with matched-token vocabulary reaches ~5% top-1, roughly half the cross-model oracle ceiling (10.3%).*
+![Within-Family Probe Transfer](outputs/plots/probe_transfer_within_family.png)
+*Figure 6a: Within-family next-token prediction probe transfer (Llama-1B → Llama-3B). Transfer scales with rank, reaching 93% of oracle at ridge. Both models share the same tokenizer, so probes are evaluated on the full vocabulary.*
 
 | Method | Top-1 |
 |--------|-------|
@@ -292,6 +292,9 @@ Within-family ridge alignment retains **93%** of oracle accuracy — the bridge 
 #### Cross-architecture (Gemma-2B → Qwen-1.5B) — matched-token vocabulary
 
 Cross-architecture pairs use different tokenizers, so raw token IDs are not comparable. We built a cross-tokenizer vocabulary mapping by decoding all token IDs to strings, stripping tokenizer-specific prefixes (SentencePiece `▁`, tiktoken `Ġ`), and finding exact string matches. This yields 83,499 shared tokens between Gemma and Qwen. We relabeled all next-token predictions to shared class IDs and selected the top-500 most frequent shared classes.
+
+![Cross-Architecture Probe Transfer](outputs/plots/probe_transfer_cross_arch.png)
+*Figure 6b: Cross-architecture next-token prediction probe transfer (Gemma-2B → Qwen-1.5B). Uses a matched-token vocabulary (top-500 shared classes), a different evaluation protocol than Figure 6a. Transfer reaches ~5% top-1, roughly half the cross-model oracle ceiling (10.3%).*
 
 | Method | Top-1 | Top-5 |
 |--------|-------|-------|

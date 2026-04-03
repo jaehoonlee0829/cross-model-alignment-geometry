@@ -91,8 +91,8 @@ We train a logistic regression probe on Model A's activations to predict next to
 
 #### Within-family (Llama-1B → Llama-3B) — shared tokenizer
 
-![Probe Transfer Comparison](outputs/plots/probe_transfer_comparison.png)
-*Left: within-family transfer scales with rank, reaching 93% of oracle at ridge. Right: cross-arch transfer with matched-token vocabulary reaches ~5% top-1, roughly half the cross-model oracle ceiling (10.3%) — the models fundamentally disagree on next-token predictions.*
+![Within-Family Probe Transfer](outputs/plots/probe_transfer_within_family.png)
+*Within-family transfer scales with rank, reaching 93% of oracle at ridge. Both models share the same tokenizer, so probes are evaluated on the full vocabulary.*
 
 | Method | Top-1 |
 |--------|-------|
@@ -103,6 +103,9 @@ We train a logistic regression probe on Model A's activations to predict next to
 Within-family ridge bridge retains **93%** of oracle accuracy. The bridge faithfully preserves fine-grained token-level predictions within the same architecture family.
 
 #### Cross-architecture (Gemma-2B → Qwen-1.5B) — matched-token vocabulary
+
+![Cross-Architecture Probe Transfer](outputs/plots/probe_transfer_cross_arch.png)
+*Cross-arch transfer with matched-token vocabulary reaches ~5% top-1, roughly half the cross-model oracle ceiling (10.3%). Note: this experiment uses a different evaluation protocol (top-500 shared vocabulary classes) than the within-family experiment above, so the two figures should not be directly compared.*
 
 | Method | Top-1 | Top-5 |
 |--------|-------|-------|
