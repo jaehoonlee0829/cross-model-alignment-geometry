@@ -4,7 +4,7 @@
 
 ## Motivation
 
-Recent work on cross-model transfer — steering vectors (2503.04429), model stitching (2506.06609), universal SAEs (2502.03714) — demonstrates that learned mappings can transfer interpretability tools across architectures. But these papers skip measuring representational similarity before attempting transfer, making it hard to distinguish genuine shared structure from overfitting.
+Recent work on cross-model transfer : steering vectors (2503.04429), model stitching (2506.06609), universal SAEs (2502.03714) — demonstrates that learned mappings can transfer interpretability tools across architectures. But these papers skip measuring representational similarity before attempting transfer, making it hard to distinguish genuine shared structure from overfitting.
 
 The **Platonic Representation Hypothesis** (Huh et al., 2024) predicts convergence to shared representations regardless of architecture. The **Aristotelian critique** (Chun et al., 2026) argues that standard CKA overstates this convergence due to dimensionality inflation, and advocates for permutation-calibrated measurements.
 
