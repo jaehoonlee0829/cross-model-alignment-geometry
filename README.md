@@ -133,6 +133,8 @@ To test whether the bridge preserves coarser linguistic structure, we use spaCy 
 | | Best low-rank (r128) | **49.3%** | **101.6%** |
 | | Ridge | 47.1% | 97.1% |
 
+![POS Transfer Rank Ablation](outputs/plots/pos_transfer_rank_ablation.png)
+
 **Key findings:**
 - POS transfer works cross-arch at ~79% of oracle (low-rank r4). The bridge preserves grammatical category information across architectures.
 - Within-family Llama transfer is near-perfect. The >100% transfer ratio is an artifact of evaluating oracle and transfer on slightly different valid-sample subsets (different tokenizers produce different valid masks).
